@@ -42,9 +42,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         if (value != null)
                         {
                             output.CopyFrom(_CrLf, 0, 2);
-                            output.CopyFromAscii(kv.Key);
+                            output.CopyFromAsciiStripControlChars(kv.Key);
                             output.CopyFrom(_colonSpace, 0, 2);
-                            output.CopyFromAscii(value);
+                            output.CopyFromAsciiStripControlChars(value);
                         }
                     }
                 }

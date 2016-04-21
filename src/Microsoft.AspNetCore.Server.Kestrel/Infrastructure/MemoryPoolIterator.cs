@@ -839,5 +839,81 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             _block = block;
             _index = blockIndex;
         }
+        
+        public unsafe void CopyFromAsciiStripControlChars(string data)
+        {
+            if (IsDefault)
+            {
+                return;
+            }
+
+            Debug.Assert(_block != null);
+            Debug.Assert(_block.Next == null);
+            Debug.Assert(_block.End == _index);
+
+            var pool = _block.Pool;
+            var block = _block;
+            var blockIndex = _index;
+            var length = data.Length;
+
+            var bytesLeftInBlock = block.Data.Offset + block.Data.Count - blockIndex;
+            var bytesLeftInBlockMinusSpan = bytesLeftInBlock - 3;
+
+            fixed (char* pData = data)
+            {
+                var input = pData;
+                var inputEnd = pData + length;
+                var inputEndMinusSpan = inputEnd - 3;
+
+                while (input < inputEnd)
+                {
+                    if (bytesLeftInBlock == 0)
+                    {
+                        var nextBlock = pool.Lease();
+                        block.End = blockIndex;
+                        block.Next = nextBlock;
+                        block = nextBlock;
+
+                        blockIndex = block.Data.Offset;
+                        bytesLeftInBlock = block.Data.Count;
+                        bytesLeftInBlockMinusSpan = bytesLeftInBlock - 3;
+                    }
+
+                    fixed (byte* pOutput = &block.Data.Array[block.End])
+                    {
+                        //this line is needed to allow output be an register var 
+                        var output = pOutput;
+
+                        var copied = 0;
+                        for (; input < inputEndMinusSpan && copied < bytesLeftInBlockMinusSpan; copied += 4)
+                        {
+                            var input0 = (byte)*(input);
+                            var input1 = (byte)*(input + 1);
+                            var input2 = (byte)*(input + 2);
+                            var input3 = (byte)*(input + 3);
+                            *(output) = (input0 >= 0x20) ? input0 : (byte)0x20;
+                            *(output + 1) = (input1 >= 0x20) ? input1 : (byte)0x20;
+                            *(output + 2) = (input2 >= 0x20) ? input2 : (byte)0x20;
+                            *(output + 3) = (input3 >= 0x20) ? input3 : (byte)0x20;
+                            output += 4;
+                            input += 4;
+                        }
+                        for (; input < inputEnd && copied < bytesLeftInBlock; copied++)
+                        {
+                            var input0 = (byte)*(input++);
+                            *(output++) = (input0 >= 0x20) ? input0 : (byte)0x20;
+                        }
+
+                        blockIndex += copied;
+                        bytesLeftInBlockMinusSpan -= copied;
+                        bytesLeftInBlock -= copied;
+                    }
+                }
+            }
+
+            block.End = blockIndex;
+            _block = block;
+            _index = blockIndex;
+        }
     }
 }

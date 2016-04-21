@@ -405,7 +405,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                             if (value != null)
                             {{
                                 output.CopyFrom(_headerBytes, {header.BytesOffset}, {header.BytesCount});
-                                output.CopyFromAscii(value);
+                                output.CopyFromAsciiStripControlChars(value);
                             }}
                         }}
                 }}
