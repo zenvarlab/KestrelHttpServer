@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private static readonly WaitCallback _returnBlocks = (state) => ReturnBlocks((MemoryPoolBlock)state);
         private static readonly Action<object> _connectionCancellation = (state) => ((UvSocketOutput)state).CancellationTriggered();
 
-        private readonly KestrelThread _thread;
+        private readonly UvThread _thread;
         private readonly UvStreamHandle _socket;
         private readonly UvConnection _connection;
         private readonly string _connectionId;
@@ -54,7 +54,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private readonly Queue<UvWriteReq> _writeReqPool;
 
         public UvSocketOutput(
-            KestrelThread thread,
+            UvThread thread,
             UvStreamHandle socket,
             MemoryPool memory,
             UvConnection connection,

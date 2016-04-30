@@ -10,10 +10,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
     public class ConnectionManager
     {
-        private KestrelThread _thread;
+        private UvThread _thread;
         private List<Task> _connectionStopTasks;
 
-        public ConnectionManager(KestrelThread thread)
+        public ConnectionManager(UvThread thread)
         {
             _thread = thread;
         }

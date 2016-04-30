@@ -24,11 +24,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         {
             Libuv = uv;
             _options = options.Value;
-            Threads = new List<KestrelThread>();
+            Threads = new List<UvThread>();
         }
 
         public Libuv Libuv { get; private set; }
-        public List<KestrelThread> Threads { get; private set; }
+        public List<UvThread> Threads { get; private set; }
 
         public void Start(ServiceContext context)
         {
@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
             for (var index = 0; index < _options.ThreadCount; index++)
             {
-                Threads.Add(new KestrelThread(this));
+                Threads.Add(new UvThread(this));
             }
 
             foreach (var thread in Threads)

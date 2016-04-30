@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
     /// <summary>
     /// Summary description for KestrelThread
     /// </summary>
-    public class KestrelThread
+    public class UvThread
     {
         // maximum times the work queues swapped and are processed in a single pass
         // as completing a task may immediately have write data to put on the network
@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private readonly IKestrelTrace _log;
         private readonly IThreadPool _threadPool;
 
-        public KestrelThread(UvEngine engine)
+        public UvThread(UvEngine engine)
         {
             _engine = engine;
             _appLifetime = engine.AppLifetime;
@@ -160,9 +160,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             _post.Send();
         }
 
-        private void Post(Action<KestrelThread> callback)
+        private void Post(Action<UvThread> callback)
         {
-            Post(thread => callback((KestrelThread)thread), this);
+            Post(thread => callback((UvThread)thread), this);
         }
 
         public Task PostAsync(Action<object> callback, object state)

@@ -33,7 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public ServerAddress ServerAddress { get; set; }
 
-        public KestrelThread Thread { get; set; }
+        public UvThread Thread { get; set; }
 
         public MemoryPool Memory { get; set; }
 
