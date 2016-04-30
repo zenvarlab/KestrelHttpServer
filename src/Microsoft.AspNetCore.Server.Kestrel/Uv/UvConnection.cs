@@ -4,7 +4,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel.Filter;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Networking;
 using Microsoft.Extensions.Logging;
@@ -28,9 +27,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private readonly UvStreamHandle _socket;
         private Frame _frame;
-        private ConnectionFilterContext _filterContext;
-        private FilterStream _libuvStream;
-        private FilteredStreamAdapter _filteredStreamAdapter;
         private Task _readInputTask;
 
         private readonly SocketInput _rawSocketInput;
@@ -74,61 +70,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
 
             // Don't initialize _frame until SocketInput and SocketOutput are set to their final values.
-            if (ServerOptions.ConnectionFilter == null)
+            lock (_stateLock)
             {
-                lock (_stateLock)
+                if (_connectionState != ConnectionState.CreatingFrame)
                 {
-                    if (_connectionState != ConnectionState.CreatingFrame)
-                    {
-                        throw new InvalidOperationException("Invalid connection state: " + _connectionState);
-                    }
-
-                    _connectionState = ConnectionState.Open;
-
-                    SocketInput = _rawSocketInput;
-                    SocketOutput = _rawSocketOutput;
-
-                    _frame = CreateFrame();
-                    _frame.Start();
+                    throw new InvalidOperationException("Invalid connection state: " + _connectionState);
                 }
-            }
-            else
-            {
-                _libuvStream = new FilterStream(_rawSocketInput, _rawSocketOutput);
 
-                _filterContext = new ConnectionFilterContext
-                {
-                    Connection = _libuvStream,
-                    Address = ServerAddress
-                };
+                _connectionState = ConnectionState.Open;
 
-                try
-                {
-                    ServerOptions.ConnectionFilter.OnConnectionAsync(_filterContext).ContinueWith((task, state) =>
-                    {
-                        var connection = (UvConnection)state;
+                SocketInput = _rawSocketInput;
+                SocketOutput = _rawSocketOutput;
 
-                        if (task.IsFaulted)
-                        {
-                            connection.Log.LogError(0, task.Exception, "ConnectionFilter.OnConnection");
-                            connection.ConnectionControl.End(ProduceEndType.SocketDisconnect);
-                        }
-                        else if (task.IsCanceled)
-                        {
-                            connection.Log.LogError("ConnectionFilter.OnConnection Canceled");
-                            connection.ConnectionControl.End(ProduceEndType.SocketDisconnect);
-                        }
-                        else
-                        {
-                            connection.ApplyConnectionFilter();
-                        }
-                    }, this);
-                }
-                catch (Exception ex)
-                {
-                    Log.LogError(0, ex, "ConnectionFilter.OnConnection");
-                    ConnectionControl.End(ProduceEndType.SocketDisconnect);
-                }
+                _frame = CreateFrame();
+                _frame.Start();
             }
         }
 
@@ -179,21 +134,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         // Called on Libuv thread
         public virtual void OnSocketClosed()
         {
-            if (_filteredStreamAdapter != null)
-            {
-                _filteredStreamAdapter.Abort();
-                _rawSocketInput.IncomingFin();
-                _readInputTask.ContinueWith((task, state) =>
-                {
-                    ((UvConnection)state)._filterContext.Connection.Dispose();
-                    ((UvConnection)state)._filteredStreamAdapter.Dispose();
-                    ((UvConnection)state)._rawSocketInput.Dispose();
-                }, this);
-            }
-            else
-            {
-                _rawSocketInput.Dispose();
-            }
+            _rawSocketInput.Dispose();
 
             lock (_stateLock)
             {
@@ -216,22 +157,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     _connectionState = ConnectionState.Open;
 
-                    if (_filterContext.Connection != _libuvStream)
-                    {
-                        _filteredStreamAdapter = new FilteredStreamAdapter(ConnectionId, _filterContext.Connection, Memory, Log, ThreadPool);
-
-                        SocketInput = _filteredStreamAdapter.SocketInput;
-                        SocketOutput = _filteredStreamAdapter.SocketOutput;
-
-                        _readInputTask = _filteredStreamAdapter.ReadInputAsync();
-                    }
-                    else
-                    {
-                        SocketInput = _rawSocketInput;
-                        SocketOutput = _rawSocketOutput;
-                    }
-
-                    PrepareRequest = _filterContext.PrepareRequest;
+                    SocketInput = _rawSocketInput;
+                    SocketOutput = _rawSocketOutput;
 
                     _frame = CreateFrame();
                     _frame.Start();

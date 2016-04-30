@@ -9,7 +9,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
     public interface IConnectionContext : IServiceContext
     {
-        
         SocketInput SocketInput { get; }
 
         ISocketOutput SocketOutput { get; }

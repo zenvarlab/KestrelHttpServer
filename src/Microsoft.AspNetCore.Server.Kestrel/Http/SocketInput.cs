@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private MemoryPoolBlock _head;
         private MemoryPoolBlock _tail;
-        private MemoryPoolBlock _pinned;
+        private MemoryPoolBlock _current;
 
         private int _consumingState;
         private object _sync = new object();
@@ -43,30 +43,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public MemoryPoolBlock IncomingStart()
         {
-            _pinned = _memory.Lease();
+            _current = _memory.Lease();
 
-            return _pinned;
+            return _current;
         }
 
         public void IncomingComplete(int count, Exception error)
         {
             lock (_sync)
             {
-                if (_pinned != null)
+                if (_current != null)
                 {
-                    _pinned.End += count;
+                    _current.End += count;
 
                     if (_head == null)
                     {
-                        _head = _tail = _pinned;
+                        _head = _tail = _current;
                     }
                     else
                     {
-                        _tail.Next = _pinned;
-                        _tail = _pinned;
+                        _tail.Next = _current;
+                        _tail = _current;
                     }
 
-                    _pinned = null;
+                    _current = null;
                 }
 
                 if (count == 0)
@@ -84,16 +84,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public void IncomingDeferred()
         {
-            Debug.Assert(_pinned != null);
+            Debug.Assert(_current != null);
 
-            if (_pinned != null)
+            if (_current != null)
             {
-                if (_pinned != _tail)
+                if (_current != _tail)
                 {
-                    _memory.Return(_pinned);
+                    _memory.Return(_current);
                 }
 
-                _pinned = null;
+                _current = null;
             }
         }
 
