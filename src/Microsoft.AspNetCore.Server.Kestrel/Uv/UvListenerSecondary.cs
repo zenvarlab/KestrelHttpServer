@@ -39,7 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             ServerAddress = address;
             Thread = thread;
-            ConnectionManager = new ConnectionManager(thread);
+            ConnectionManager = new UvConnectionManager(thread);
 
             DispatchPipe = new UvPipeHandle(Log);
 

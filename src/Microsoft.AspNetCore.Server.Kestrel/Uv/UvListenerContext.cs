@@ -37,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public MemoryPool Memory { get; set; }
 
-        public ConnectionManager ConnectionManager { get; set; }
+        public UvConnectionManager ConnectionManager { get; set; }
 
         public Queue<UvWriteReq> WriteReqPool { get; set; }
     }

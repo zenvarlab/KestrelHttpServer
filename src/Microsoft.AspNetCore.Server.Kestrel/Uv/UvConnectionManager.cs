@@ -8,12 +8,12 @@ using Microsoft.AspNetCore.Server.Kestrel.Networking;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class ConnectionManager
+    public class UvConnectionManager
     {
         private UvThread _thread;
         private List<Task> _connectionStopTasks;
 
-        public ConnectionManager(UvThread thread)
+        public UvConnectionManager(UvThread thread)
         {
             _thread = thread;
         }
