@@ -15,14 +15,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     {
         private bool _closed;
 
-        protected Listener(ServiceContext serviceContext) 
+        protected Listener(ServiceContext serviceContext)
             : base(serviceContext)
         {
         }
 
         protected UvStreamHandle ListenSocket { get; private set; }
 
-        public Task StartAsync(
+        public async Task StartAsync(
             ServerAddress address,
             KestrelThread thread)
         {
@@ -30,24 +30,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             Thread = thread;
             ConnectionManager = new ConnectionManager(thread);
 
-            var tcs = new TaskCompletionSource<int>(this);
+            await Thread;
 
-            Thread.Post(state =>
-            {
-                var tcs2 = (TaskCompletionSource<int>)state;
-                try
-                {
-                    var listener = ((Listener)tcs2.Task.AsyncState);
-                    listener.ListenSocket = listener.CreateListenSocket();
-                    tcs2.SetResult(0);
-                }
-                catch (Exception ex)
-                {
-                    tcs2.SetException(ex);
-                }
-            }, tcs);
-
-            return tcs.Task;
+            ListenSocket = CreateListenSocket();
         }
 
         /// <summary>
@@ -57,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         protected static void ConnectionCallback(UvStreamHandle stream, int status, Exception error, object state)
         {
-            var listener = (Listener) state;
+            var listener = (Listener)state;
 
             if (error != null)
             {
@@ -90,26 +75,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             // the exception that stopped the event loop will never be surfaced.
             if (Thread.FatalError == null && ListenSocket != null)
             {
-                await Thread.PostAsync(state =>
-                {
-                    var listener = (Listener)state;
-                    listener.ListenSocket.Dispose();
+                await Thread;
 
-                    listener._closed = true;
+                ListenSocket.Dispose();
 
-                    listener.ConnectionManager.WalkConnectionsAndClose();
-                }, this).ConfigureAwait(false);
+                _closed = true;
+
+                ConnectionManager.WalkConnectionsAndClose();
+
+                await Task.Yield();
 
                 await ConnectionManager.WaitForConnectionCloseAsync().ConfigureAwait(false);
 
-                await Thread.PostAsync(state =>
+                await Thread;
+
+                while (WriteReqPool.Count > 0)
                 {
-                    var writeReqPool = ((Listener)state).WriteReqPool;
-                    while (writeReqPool.Count > 0)
-                    {
-                        writeReqPool.Dequeue().Dispose();
-                    }
-                }, this).ConfigureAwait(false);
+                    WriteReqPool.Dequeue().Dispose();
+                }
+
+                await Task.Yield();
             }
 
             Memory.Dispose();

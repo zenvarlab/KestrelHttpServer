@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,7 +17,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
     /// <summary>
     /// Summary description for KestrelThread
     /// </summary>
-    public class KestrelThread
+    public class KestrelThread : ICriticalNotifyCompletion
     {
         // maximum times the work queues swapped and are processed in a single pass
         // as completing a task may immediately have write data to put on the network
@@ -333,6 +334,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
 
             return wasWork;
+        }
+
+        public KestrelThread GetAwaiter() => this;
+
+        public bool IsCompleted => Thread.CurrentThread.ManagedThreadId == _thread.ManagedThreadId;
+
+        public void GetResult()
+        {
+            // REVIEW: Should this ever throw?
+            // FatalError?.Throw();
+        }
+
+        public void UnsafeOnCompleted(Action continuation)
+        {
+            OnCompleted(continuation);
+        }
+
+        public void OnCompleted(Action continuation)
+        {
+            Post(state => ((Action)state)(), continuation);
         }
 
         private struct Work

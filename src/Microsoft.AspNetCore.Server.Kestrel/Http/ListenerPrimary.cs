@@ -47,10 +47,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 Marshal.StructureToPtr(fileCompletionInfo, _fileCompletionInfoPtr, false);
             }
 
-            await StartAsync(address, thread).ConfigureAwait(false);
+            await StartAsync(address, thread);
 
-            await Thread.PostAsync(state => ((ListenerPrimary)state).PostCallback(),
-                                   this).ConfigureAwait(false);
+            await Thread;
+
+            PostCallback();
+
+            await Task.Yield();
         }
 
         private void PostCallback()
@@ -167,16 +170,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (Thread.FatalError == null && ListenPipe != null)
             {
-                await Thread.PostAsync(state =>
-                {
-                    var listener = (ListenerPrimary)state;
-                    listener.ListenPipe.Dispose();
+                await Thread;
 
-                    foreach (var dispatchPipe in listener._dispatchPipes)
-                    {
-                        dispatchPipe.Dispose();
-                    }
-                }, this).ConfigureAwait(false);
+                ListenPipe.Dispose();
+
+                foreach (var dispatchPipe in _dispatchPipes)
+                {
+                    dispatchPipe.Dispose();
+                }
+
+                await Task.Yield();
             }
         }
     }

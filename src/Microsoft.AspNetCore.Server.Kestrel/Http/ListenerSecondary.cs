@@ -164,28 +164,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             // the exception that stopped the event loop will never be surfaced.
             if (Thread.FatalError == null)
             {
-                await Thread.PostAsync(state =>
-                {
-                    var listener = (ListenerSecondary)state;
-                    listener.DispatchPipe.Dispose();
-                    listener.FreeBuffer();
+                await Thread;
 
-                    listener._closed = true;
+                DispatchPipe.Dispose();
 
-                    listener.ConnectionManager.WalkConnectionsAndClose();
-                }, this).ConfigureAwait(false);
+                FreeBuffer();
+
+                _closed = true;
+
+                ConnectionManager.WalkConnectionsAndClose();
+
+                await Task.Yield();
 
                 await ConnectionManager.WaitForConnectionCloseAsync().ConfigureAwait(false);
 
-                await Thread.PostAsync(state =>
+                await Thread;
+
+                while (WriteReqPool.Count > 0)
                 {
-                    var listener = (ListenerSecondary)state;
-                    var writeReqPool = listener.WriteReqPool;
-                    while (writeReqPool.Count > 0)
-                    {
-                        writeReqPool.Dequeue().Dispose();
-                    }
-                }, this).ConfigureAwait(false);
+                    WriteReqPool.Dequeue().Dispose();
+                }
+
+                await Task.Yield();
             }
             else
             {
