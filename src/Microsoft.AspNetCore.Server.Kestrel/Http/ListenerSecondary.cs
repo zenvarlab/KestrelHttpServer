@@ -174,7 +174,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 ConnectionManager.WalkConnectionsAndClose();
 
-                await Task.Yield();
+                await ThreadPool;
 
                 await ConnectionManager.WaitForConnectionCloseAsync().ConfigureAwait(false);
 
@@ -185,7 +185,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     WriteReqPool.Dequeue().Dispose();
                 }
 
-                await Task.Yield();
+                await ThreadPool;
             }
             else
             {

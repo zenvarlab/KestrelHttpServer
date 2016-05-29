@@ -303,13 +303,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         /// </summary>
         public void Start()
         {
-            _requestProcessingTask =
-                Task.Factory.StartNew(
-                    (o) => ((Frame)o).RequestProcessingAsync(),
-                    this,
-                    default(CancellationToken),
-                    TaskCreationOptions.DenyChildAttach,
-                    TaskScheduler.Default);
+            _requestProcessingTask = RequestProcessingAsync();
         }
 
         /// <summary>

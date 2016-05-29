@@ -88,5 +88,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                 }
             }, tcs);
         }
+
+        public IThreadPool GetAwaiter() => this;
+
+        public bool IsCompleted => false;
+
+        public void GetResult() { }
+
+        public void UnsafeOnCompleted(Action continuation)
+        {
+            OnCompleted(continuation);
+        }
+
+        public void OnCompleted(Action continuation)
+        {
+            Run(continuation);
+        }
     }
 }

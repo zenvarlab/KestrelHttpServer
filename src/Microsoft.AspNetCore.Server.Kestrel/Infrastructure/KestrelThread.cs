@@ -338,7 +338,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public KestrelThread GetAwaiter() => this;
 
-        public bool IsCompleted => Thread.CurrentThread.ManagedThreadId == _thread.ManagedThreadId;
+        public bool IsCompleted => false;
 
         public void GetResult()
         {

@@ -313,14 +313,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
         }
 
-        private void ScheduleWrite()
+        private async void ScheduleWrite()
         {
-            _thread.Post(state => ((SocketOutput)state).WriteAllPending(), this);
-        }
+            await _thread;
 
-        // This is called on the libuv event loop
-        private void WriteAllPending()
-        {
             WriteContext writingContext = null;
 
             if (Monitor.TryEnter(_contextLock))

@@ -53,7 +53,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             PostCallback();
 
-            await Task.Yield();
+            await ThreadPool;
         }
 
         private void PostCallback()
@@ -179,7 +179,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     dispatchPipe.Dispose();
                 }
 
-                await Task.Yield();
+                await ThreadPool;
             }
         }
     }
