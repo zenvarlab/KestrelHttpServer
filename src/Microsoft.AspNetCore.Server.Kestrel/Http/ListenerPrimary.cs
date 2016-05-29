@@ -51,18 +51,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             await Thread;
 
-            PostCallback();
-
-            await ThreadPool;
-        }
-
-        private void PostCallback()
-        {
             ListenPipe = new UvPipeHandle(Log);
             ListenPipe.Init(Thread.Loop, Thread.QueueCloseHandle, false);
             ListenPipe.Bind(_pipeName);
             ListenPipe.Listen(Constants.ListenBacklog,
                 (pipe, status, error, state) => ((ListenerPrimary)state).OnListenPipe(pipe, status, error), this);
+
+            await ThreadPool;
         }
 
         private void OnListenPipe(UvStreamHandle pipe, int status, Exception error)
