@@ -57,7 +57,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                             break;
                         }
 
-                        await SocketInput;
+                        if (!SocketInput.IsCompleted)
+                        {
+                            await SocketInput;
+
+                            // Get off the uv thread
+                            await ThreadPool;
+                        }
                     }
 
                     InitializeHeaders();
@@ -78,7 +84,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                             break;
                         }
 
-                        await SocketInput;
+                        if (!SocketInput.IsCompleted)
+                        {
+                            await SocketInput;
+
+                            // Get off the uv thread
+                            await ThreadPool;
+                        }
                     }
 
                     if (!_requestProcessingStopping)
