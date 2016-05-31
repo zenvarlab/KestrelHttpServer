@@ -28,8 +28,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         /// </summary>
         public override async Task RequestProcessingAsync()
         {
-            await ThreadPool;
-
             try
             {
                 while (!_requestProcessingStopping)
@@ -57,13 +55,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                             break;
                         }
 
-                        if (!SocketInput.IsCompleted)
-                        {
-                            await SocketInput;
-
-                            // Get off the uv thread
-                            await ThreadPool;
-                        }
+                        await SocketInput;
                     }
 
                     InitializeHeaders();
@@ -84,13 +76,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                             break;
                         }
 
-                        if (!SocketInput.IsCompleted)
-                        {
-                            await SocketInput;
-
-                            // Get off the uv thread
-                            await ThreadPool;
-                        }
+                        await SocketInput;
                     }
 
                     if (!_requestProcessingStopping)
