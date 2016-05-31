@@ -92,6 +92,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         var context = _application.CreateContext(this);
                         try
                         {
+                            await ThreadPool;
                             await _application.ProcessRequestAsync(context).ConfigureAwait(false);
                         }
                         catch (Exception ex)
