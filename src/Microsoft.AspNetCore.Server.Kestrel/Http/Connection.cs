@@ -343,7 +343,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         _connectionState = ConnectionState.Disconnecting;
 
                         Log.ConnectionDisconnect(ConnectionId);
-                        // _rawSocketOutput.End(endType);
+                        _rawSocketOutput.End(endType);
                         break;
                     }
             }

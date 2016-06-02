@@ -93,51 +93,72 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 req.Init(thread.Loop);
 
-                while (true)
+                try
                 {
-                    await SocketInput;
-
-                    await thread;
-
-                    var start = SocketInput.ConsumingStart();
-                    var end = SocketInput.End();
-                    int bytes;
-                    int buffers;
-                    BytesBetween(start, end, out bytes, out buffers);
-
-                    try
+                    while (true)
                     {
-                        req.Write(socket, start, end, buffers, UVAwaitable<UvWriteReq>.Callback, awaitable);
-                        await awaitable;
-                    }
-                    catch
-                    {
-                        // Abort the connection for any failed write
-                        // Queued on threadpool so get it in as first op.
-                        connection.Abort();
-                    }
-                    finally
-                    {
-                        // REVIEW: Should this happen on the thread pool thread?
-                        SocketInput.ConsumingComplete(end, end);
-                    }
+                        await SocketInput;
 
-                    if (_socket.IsClosed)
-                    {
-                        break;
+                        await thread;
+
+                        var start = SocketInput.ConsumingStart();
+                        var end = SocketInput.End();
+                        int bytes;
+                        int buffers;
+                        BytesBetween(start, end, out bytes, out buffers);
+
+                        try
+                        {
+                            req.Write(socket, start, end, buffers, UVAwaitable<UvWriteReq>.Callback, awaitable);
+                            await awaitable;
+                        }
+                        catch
+                        {
+                            // Abort the connection for any failed write
+                            // Queued on threadpool so get it in as first op.
+                            connection.Abort();
+                        }
+                        finally
+                        {
+                            // REVIEW: Should this happen on the thread pool thread?
+                            SocketInput.ConsumingComplete(end, end);
+                        }
+
+                        if (_socket.IsClosed)
+                        {
+                            break;
+                        }
                     }
                 }
+                catch (TaskCanceledException)
+                {
+                    await thread;
+
+                    // Aborted the awaiter
+                    var shutdownAwaitable = new UVAwaitable<UvShutdownReq>();
+                    var shutdownReq = new UvShutdownReq(log);
+                    shutdownReq.Init(thread.Loop);
+                    shutdownReq.Shutdown(socket, UVAwaitable<UvShutdownReq>.Callback, shutdownAwaitable);
+                    await shutdownAwaitable;
+                }
+                finally
+                {
+                    // REVIEW: Who is responsible for disposing the socket output?
+                    SocketInput.Dispose();
+                    socket.Dispose();
+                    connection.OnSocketClosed();
+                }
             }
-
-            var shutdownAwaitable = new UVAwaitable<UvShutdownReq>();
-            var shutdownReq = new UvShutdownReq(log);
-            shutdownReq.Shutdown(socket, UVAwaitable<UvShutdownReq>.Callback, shutdownAwaitable);
-            await shutdownAwaitable;
-
-            // REVIEW: Who is responsible for disposing the socket output?
-            SocketInput.Dispose();
-            socket.Dispose();
-            connection.OnSocketClosed();
+        }
+        public void End(ProduceEndType endType)
+        {
+            switch (endType)
+            {
+                case ProduceEndType.SocketShutdown:
+                case ProduceEndType.SocketDisconnect:
+                    SocketInput.AbortAwaiting();
+                    break;
+            }
         }
 
         private static void BytesBetween(MemoryPoolIterator start, MemoryPoolIterator end, out int bytes, out int buffers)
