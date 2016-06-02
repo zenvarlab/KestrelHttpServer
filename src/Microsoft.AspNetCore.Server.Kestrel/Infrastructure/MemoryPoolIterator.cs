@@ -111,7 +111,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                 block = block.Next;
             }
 
-            return new MemoryPoolIterator(prev);
+            return new MemoryPoolIterator(prev, prev.End);
         }
 
         public void Skip(int bytesToSkip)

@@ -32,11 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             lock (_sync)
             {
-                if (end.IsDefault)
-                {
-                    RemoteIntakeFin = true;
-                }
-                else
+                if (!end.IsDefault)
                 {
                     _tail = end.Block;
                     _tail.End = end.Index;
