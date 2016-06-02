@@ -14,7 +14,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private readonly SocketInput _socketInput;
         private readonly Task _writeToLibuv;
         private readonly UvStreamHandle _socket;
-        private readonly Connection _connection;
 
         public SocketInput SocketInput => _socketInput;
 
@@ -27,9 +26,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             IThreadPool threadPool)
         {
             _socket = socket;
-            _connection = connection;
             _socketInput = new SocketInput(memory);
-            _writeToLibuv = ProcessOutput(log, thread, socket);
+            _writeToLibuv = ProcessOutput(log, thread, connection, socket);
         }
 
         public void ProducingComplete(MemoryPoolIterator end)
@@ -85,7 +83,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             return TaskUtilities.CompletedTask;
         }
 
-        private async Task ProcessOutput(IKestrelTrace log, KestrelThread thread, UvStreamHandle socket)
+        private async Task ProcessOutput(IKestrelTrace log, KestrelThread thread, Connection connection, UvStreamHandle socket)
         {
             // Reuse the awaiter
             var awaitable = new UVAwaitable<UvWriteReq>();
@@ -95,7 +93,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 req.Init(thread.Loop);
 
-                while (!SocketInput.RemoteIntakeFin)
+                while (true)
                 {
                     await thread;
 
@@ -114,7 +112,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     {
                         // Abort the connection for any failed write
                         // Queued on threadpool so get it in as first op.
-                        _connection.Abort();
+                        connection.Abort();
                     }
                     finally
                     {
@@ -139,7 +137,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             // REVIEW: Who is responsible for disposing the socket output?
             SocketInput.Dispose();
             socket.Dispose();
-            _connection.OnSocketClosed();
+            connection.OnSocketClosed();
         }
 
         private static void BytesBetween(MemoryPoolIterator start, MemoryPoolIterator end, out int bytes, out int buffers)
