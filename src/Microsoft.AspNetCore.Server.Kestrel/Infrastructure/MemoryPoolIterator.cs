@@ -100,6 +100,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             } while (true);
         }
 
+        public MemoryPoolIterator ReadToEnd()
+        {
+            var block = _block;
+            var prev = block;
+
+            while (block != null)
+            {
+                prev = block;
+                block = block.Next;
+            }
+
+            return new MemoryPoolIterator(prev);
+        }
+
         public void Skip(int bytesToSkip)
         {
             if (_block == null)
@@ -247,28 +261,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                 array = block.Array;
                 while (following > 0)
                 {
-// Need unit tests to test Vector path
+                    // Need unit tests to test Vector path
 #if !DEBUG
                     // Check will be Jitted away https://github.com/dotnet/coreclr/issues/1079
                     if (Vector.IsHardwareAccelerated)
                     {
 #endif
-                        if (following >= _vectorSpan)
+                    if (following >= _vectorSpan)
+                    {
+                        var byte0Equals = Vector.Equals(new Vector<byte>(array, index), byte0Vector);
+
+                        if (byte0Equals.Equals(Vector<byte>.Zero))
                         {
-                            var byte0Equals = Vector.Equals(new Vector<byte>(array, index), byte0Vector);
-
-                            if (byte0Equals.Equals(Vector<byte>.Zero))
-                            {
-                                following -= _vectorSpan;
-                                index += _vectorSpan;
-                                continue;
-                            }
-
-                            _block = block;
-                            _index = index + FindFirstEqualByte(ref byte0Equals);
-                            return byte0;
+                            following -= _vectorSpan;
+                            index += _vectorSpan;
+                            continue;
                         }
-// Need unit tests to test Vector path
+
+                        _block = block;
+                        _index = index + FindFirstEqualByte(ref byte0Equals);
+                        return byte0;
+                    }
+                    // Need unit tests to test Vector path
 #if !DEBUG
                     }
 #endif
@@ -329,46 +343,46 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                 while (following > 0)
                 {
 
-// Need unit tests to test Vector path
+                    // Need unit tests to test Vector path
 #if !DEBUG
                     // Check will be Jitted away https://github.com/dotnet/coreclr/issues/1079
                     if (Vector.IsHardwareAccelerated)
                     {
 #endif
-                        if (following >= _vectorSpan)
+                    if (following >= _vectorSpan)
+                    {
+                        var data = new Vector<byte>(array, index);
+                        var byte0Equals = Vector.Equals(data, byte0Vector);
+                        var byte1Equals = Vector.Equals(data, byte1Vector);
+
+                        if (!byte0Equals.Equals(Vector<byte>.Zero))
                         {
-                            var data = new Vector<byte>(array, index);
-                            var byte0Equals = Vector.Equals(data, byte0Vector);
-                            var byte1Equals = Vector.Equals(data, byte1Vector);
-
-                            if (!byte0Equals.Equals(Vector<byte>.Zero))
-                            {
-                                byte0Index = FindFirstEqualByte(ref byte0Equals);
-                            }
-                            if (!byte1Equals.Equals(Vector<byte>.Zero))
-                            {
-                                byte1Index = FindFirstEqualByte(ref byte1Equals);
-                            }
-
-                            if (byte0Index == int.MaxValue && byte1Index == int.MaxValue)
-                            {
-                                following -= _vectorSpan;
-                                index += _vectorSpan;
-                                continue;
-                            }
-
-                            _block = block;
-
-                            if (byte0Index < byte1Index)
-                            {
-                                _index = index + byte0Index;
-                                return byte0;
-                            }
-
-                            _index = index + byte1Index;
-                            return byte1;
+                            byte0Index = FindFirstEqualByte(ref byte0Equals);
                         }
-// Need unit tests to test Vector path
+                        if (!byte1Equals.Equals(Vector<byte>.Zero))
+                        {
+                            byte1Index = FindFirstEqualByte(ref byte1Equals);
+                        }
+
+                        if (byte0Index == int.MaxValue && byte1Index == int.MaxValue)
+                        {
+                            following -= _vectorSpan;
+                            index += _vectorSpan;
+                            continue;
+                        }
+
+                        _block = block;
+
+                        if (byte0Index < byte1Index)
+                        {
+                            _index = index + byte0Index;
+                            return byte0;
+                        }
+
+                        _index = index + byte1Index;
+                        return byte1;
+                    }
+                    // Need unit tests to test Vector path
 #if !DEBUG
                     }
 #endif
@@ -435,73 +449,73 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                 array = block.Array;
                 while (following > 0)
                 {
-// Need unit tests to test Vector path
+                    // Need unit tests to test Vector path
 #if !DEBUG
                     // Check will be Jitted away https://github.com/dotnet/coreclr/issues/1079
                     if (Vector.IsHardwareAccelerated)
                     {
 #endif
-                        if (following >= _vectorSpan)
+                    if (following >= _vectorSpan)
+                    {
+                        var data = new Vector<byte>(array, index);
+                        var byte0Equals = Vector.Equals(data, byte0Vector);
+                        var byte1Equals = Vector.Equals(data, byte1Vector);
+                        var byte2Equals = Vector.Equals(data, byte2Vector);
+
+                        if (!byte0Equals.Equals(Vector<byte>.Zero))
                         {
-                            var data = new Vector<byte>(array, index);
-                            var byte0Equals = Vector.Equals(data, byte0Vector);
-                            var byte1Equals = Vector.Equals(data, byte1Vector);
-                            var byte2Equals = Vector.Equals(data, byte2Vector);
+                            byte0Index = FindFirstEqualByte(ref byte0Equals);
+                        }
+                        if (!byte1Equals.Equals(Vector<byte>.Zero))
+                        {
+                            byte1Index = FindFirstEqualByte(ref byte1Equals);
+                        }
+                        if (!byte2Equals.Equals(Vector<byte>.Zero))
+                        {
+                            byte2Index = FindFirstEqualByte(ref byte2Equals);
+                        }
 
-                            if (!byte0Equals.Equals(Vector<byte>.Zero))
-                            {
-                                byte0Index = FindFirstEqualByte(ref byte0Equals);
-                            }
-                            if (!byte1Equals.Equals(Vector<byte>.Zero))
-                            {
-                                byte1Index = FindFirstEqualByte(ref byte1Equals);
-                            }
-                            if (!byte2Equals.Equals(Vector<byte>.Zero))
-                            {
-                                byte2Index = FindFirstEqualByte(ref byte2Equals);
-                            }
+                        if (byte0Index == int.MaxValue && byte1Index == int.MaxValue && byte2Index == int.MaxValue)
+                        {
+                            following -= _vectorSpan;
+                            index += _vectorSpan;
+                            continue;
+                        }
 
-                            if (byte0Index == int.MaxValue && byte1Index == int.MaxValue && byte2Index == int.MaxValue)
-                            {
-                                following -= _vectorSpan;
-                                index += _vectorSpan;
-                                continue;
-                            }
+                        _block = block;
 
-                            _block = block;
-
-                            int toReturn, toMove;
-                            if (byte0Index < byte1Index)
+                        int toReturn, toMove;
+                        if (byte0Index < byte1Index)
+                        {
+                            if (byte0Index < byte2Index)
                             {
-                                if (byte0Index < byte2Index)
-                                {
-                                    toReturn = byte0;
-                                    toMove = byte0Index;
-                                }
-                                else
-                                {
-                                    toReturn = byte2;
-                                    toMove = byte2Index;
-                                }
+                                toReturn = byte0;
+                                toMove = byte0Index;
                             }
                             else
                             {
-                                if (byte1Index < byte2Index)
-                                {
-                                    toReturn = byte1;
-                                    toMove = byte1Index;
-                                }
-                                else
-                                {
-                                    toReturn = byte2;
-                                    toMove = byte2Index;
-                                }
+                                toReturn = byte2;
+                                toMove = byte2Index;
                             }
-
-                            _index = index + toMove;
-                            return toReturn;
                         }
-// Need unit tests to test Vector path
+                        else
+                        {
+                            if (byte1Index < byte2Index)
+                            {
+                                toReturn = byte1;
+                                toMove = byte1Index;
+                            }
+                            else
+                            {
+                                toReturn = byte2;
+                                toMove = byte2Index;
+                            }
+                        }
+
+                        _index = index + toMove;
+                        return toReturn;
+                    }
+                    // Need unit tests to test Vector path
 #if !DEBUG
                     }
 #endif

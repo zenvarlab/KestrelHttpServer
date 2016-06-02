@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Networking
 
         private IntPtr _bufs;
 
-        private Action<UvWriteReq, int, Exception, object> _callback;
+        private Action<UvWriteReq, int, object> _callback;
         private object _state;
         private const int BUFFER_COUNT = 4;
 
@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Networking
             MemoryPoolIterator start,
             MemoryPoolIterator end,
             int nBuffers,
-            Action<UvWriteReq, int, Exception, object> callback,
+            Action<UvWriteReq, int, object> callback,
             object state)
         {
             try
@@ -100,7 +100,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Networking
             UvStreamHandle handle,
             ArraySegment<ArraySegment<byte>> bufs,
             UvStreamHandle sendHandle,
-            Action<UvWriteReq, int, Exception, object> callback,
+            Action<UvWriteReq, int, object> callback,
             object state)
         {
             try
@@ -164,15 +164,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Networking
             var state = req._state;
             req._state = null;
 
-            Exception error = null;
-            if (status < 0)
-            {
-                req.Libuv.Check(status, out error);
-            }
-
             try
             {
-                callback(req, status, error, state);
+                callback(req, status, state);
             }
             catch (Exception ex)
             {

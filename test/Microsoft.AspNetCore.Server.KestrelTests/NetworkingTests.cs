@@ -188,7 +188,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                                     start,
                                     end,
                                     1,
-                                    (_1, _2, _3, _4) =>
+                                    (_1, _2, _3) =>
                                     {
                                         pool.Return(block);
                                         pool.Dispose();

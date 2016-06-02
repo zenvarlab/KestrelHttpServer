@@ -27,6 +27,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private MemoryPoolBlock _pinned;
 
         private int _consumingState;
+
+        public void IncomingComplete(MemoryPoolIterator end)
+        {
+            lock (_sync)
+            {
+                if (end.IsDefault)
+                {
+                    RemoteIntakeFin = true;
+                }
+                else
+                {
+                    _tail = end.Block;
+                    _tail.End = end.Index;
+                }
+            }
+
+            Complete();
+        }
+
         private object _sync = new object();
 
         public SocketInput(MemoryPool memory)
