@@ -34,7 +34,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private Task _readInputTask;
 
         private readonly SocketInput _rawSocketInput;
-        private readonly SocketOutput _rawSocketOutput;
+        private readonly SocketOutput2 _rawSocketOutput;
 
         private readonly object _stateLock = new object();
         private ConnectionState _connectionState;
@@ -49,7 +49,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
 
             _rawSocketInput = new SocketInput(Memory);
-            _rawSocketOutput = new SocketOutput(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool, WriteReqPool);
+            // _rawSocketOutput = new SocketOutput(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool, WriteReqPool);
+            _rawSocketOutput = new SocketOutput2(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool);
         }
 
         // Internal for testing
@@ -342,7 +343,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         _connectionState = ConnectionState.Disconnecting;
 
                         Log.ConnectionDisconnect(ConnectionId);
-                        _rawSocketOutput.End(endType);
+                        // _rawSocketOutput.End(endType);
                         break;
                     }
             }

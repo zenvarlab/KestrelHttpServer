@@ -37,6 +37,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     _tail = end.Block;
                     _tail.End = end.Index;
                 }
+
+                if(_head == null)
+                {
+                    _head = _tail;
+                }
+
+                _pinned = null;
             }
 
             Complete();
@@ -68,6 +75,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
 
             return _pinned;
+        }
+
+        public MemoryPoolIterator End()
+        {
+            var block = IncomingStart();
+
+            return new MemoryPoolIterator(block, block.End);
         }
 
         public void IncomingData(byte[] buffer, int offset, int count)

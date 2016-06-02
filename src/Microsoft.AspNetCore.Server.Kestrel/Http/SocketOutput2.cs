@@ -37,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public MemoryPoolIterator ProducingStart()
         {
-            return new MemoryPoolIterator(SocketInput.IncomingStart());
+            return SocketInput.End();
         }
 
         public void Write(ArraySegment<byte> buffer, bool chunk = false)
@@ -95,10 +95,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 while (true)
                 {
+                    await SocketInput;
+
                     await thread;
 
                     var start = SocketInput.ConsumingStart();
-                    var end = start.ReadToEnd();
+                    var end = SocketInput.End();
                     int bytes;
                     int buffers;
                     BytesBetween(start, end, out bytes, out buffers);
@@ -124,8 +126,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     {
                         break;
                     }
-
-                    await SocketInput;
                 }
             }
 
