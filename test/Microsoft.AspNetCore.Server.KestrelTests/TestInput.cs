@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             FrameContext = context;
 
             _memoryPool = new MemoryPool();
-            FrameContext.SocketInput = new SocketInput(_memoryPool);
+            FrameContext.SocketInput = new SocketInput(_memoryPool, ltp);
         }
 
         public Frame FrameContext { get; set; }

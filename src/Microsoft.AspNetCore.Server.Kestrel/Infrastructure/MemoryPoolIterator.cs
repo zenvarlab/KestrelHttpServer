@@ -850,5 +850,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             _block = block;
             _index = blockIndex;
         }
+
+        public void UpdateEnd(int bytesWritten)
+        {
+            Debug.Assert(_block != null);
+            Debug.Assert(_block.Next == null);
+            Debug.Assert(_block.End == _index);
+
+            var block = _block;
+            var blockIndex = _index + bytesWritten;
+
+            Debug.Assert(blockIndex <= block.Data.Offset + block.Data.Count);
+
+            block.End = blockIndex;
+            _block = block;
+            _index = blockIndex;
+        }
     }
 }

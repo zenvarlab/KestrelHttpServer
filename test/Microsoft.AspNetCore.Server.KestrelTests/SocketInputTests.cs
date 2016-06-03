@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var trace = new KestrelTrace(new TestKestrelTrace());
             var ltp = new LoggingThreadPool(trace);
             using (var memory2 = new MemoryPool())
-            using (var socketInput = new SocketInput(memory2))
+            using (var socketInput = new SocketInput(memory2, ltp))
             {
                 var task0Threw = false;
                 var task1Threw = false;
@@ -82,13 +82,13 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var defultIter = new MemoryPoolIterator();
 
             // Calling ConsumingComplete without a preceding calling to ConsumingStart fails
-            using (var socketInput = new SocketInput(null))
+            using (var socketInput = new SocketInput(null, null))
             {
                 Assert.Throws<InvalidOperationException>(() => socketInput.ConsumingComplete(defultIter, defultIter));
             }
 
             // Calling ConsumingComplete twice in a row fails
-            using (var socketInput = new SocketInput(null))
+            using (var socketInput = new SocketInput(null, null))
             {
                 socketInput.ConsumingStart();
                 socketInput.ConsumingComplete(defultIter, defultIter);
@@ -96,7 +96,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
 
             // Calling ConsumingStart twice in a row fails
-            using (var socketInput = new SocketInput(null))
+            using (var socketInput = new SocketInput(null, null))
             {
                 socketInput.ConsumingStart();
                 Assert.Throws<InvalidOperationException>(() => socketInput.ConsumingStart());

@@ -39,6 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private readonly object _stateLock = new object();
         private ConnectionState _connectionState;
         private TaskCompletionSource<object> _socketClosedTcs;
+        private MemoryPoolIterator _iterator;
 
         public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
         {
@@ -48,7 +49,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
 
-            _rawSocketInput = new SocketInput(Memory);
+            _rawSocketInput = new SocketInput(Memory, ThreadPool);
             // _rawSocketOutput = new SocketOutput(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool, WriteReqPool);
             _rawSocketOutput = new SocketOutput2(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool);
         }
@@ -249,7 +250,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
-            var result = _rawSocketInput.IncomingStart();
+            _iterator = _rawSocketInput.IncomingStart();
+            var result = _iterator.Block;
 
             return handle.Libuv.buf_init(
                 result.DataArrayPtr + result.End,
@@ -261,15 +263,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ((Connection)state).OnRead(handle, status);
         }
 
-        private void OnRead(UvStreamHandle handle, int status)
+        private async void OnRead(UvStreamHandle handle, int status)
         {
             if (status == 0)
             {
                 // A zero status does not indicate an error or connection end. It indicates
                 // there is no data to be read right now.
-                // See the note at http://docs.libuv.org/en/v1.x/stream.html#c.uv_read_cb.
-                // We need to clean up whatever was allocated by OnAlloc.
-                _rawSocketInput.IncomingDeferred();
                 return;
             }
 
@@ -294,11 +293,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 handle.Libuv.Check(status, out error);
             }
 
-            _rawSocketInput.IncomingComplete(readCount, error);
+            if (readCount == 0)
+            {
+                _rawSocketInput.RemoteIntakeFin = true;
+            }
+            else
+            {
+                _iterator.UpdateEnd(readCount);
+            }
+
+            var task = _rawSocketInput.IncomingComplete(_iterator, error);
+            _iterator = default(MemoryPoolIterator);
 
             if (errorDone)
             {
                 Abort();
+            }
+            else
+            {
+                if (!task.IsCompleted)
+                {
+                    ((IConnectionControl)this).Pause();
+
+                    // Wait so we can re-open the flood gates
+                    await task;
+
+                    // Get back onto the UV thread
+                    await Thread;
+
+                    // Resume pumping data from the socket
+                    ((IConnectionControl)this).Resume();
+                }
+
             }
         }
 

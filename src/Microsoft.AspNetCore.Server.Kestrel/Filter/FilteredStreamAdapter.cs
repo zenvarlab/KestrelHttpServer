@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             IKestrelTrace logger,
             IThreadPool threadPool)
         {
-            SocketInput = new SocketInput(memory);
+            SocketInput = new SocketInput(memory, threadPool);
             SocketOutput = new StreamSocketOutput(connectionId, filteredStream, memory, logger);
 
             _connectionId = connectionId;

@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -24,62 +23,51 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private MemoryPoolBlock _head;
         private MemoryPoolBlock _tail;
-        private MemoryPoolBlock _pinned;
 
         private int _consumingState;
-
-        public void IncomingComplete(MemoryPoolIterator end)
-        {
-            lock (_sync)
-            {
-                if (!end.IsDefault)
-                {
-                    _tail = end.Block;
-                    _tail.End = end.Index;
-                }
-
-                if(_head == null)
-                {
-                    _head = _tail;
-                }
-
-                _pinned = null;
-            }
-
-            Complete();
-        }
-
         private object _sync = new object();
+        private readonly int _threshold;
+        private int _count;
+        private LimitState _limitState;
+        private readonly IThreadPool _threadPool;
 
-        public SocketInput(MemoryPool memory)
+
+        public SocketInput(MemoryPool memory, IThreadPool threadPool, int threshold = 10 * 1024)
         {
             _memory = memory;
             _awaitableState = _awaitableIsNotCompleted;
+            _threshold = threshold;
+            _threadPool = threadPool;
         }
 
         public bool RemoteIntakeFin { get; set; }
 
         public bool IsCompleted => ReferenceEquals(_awaitableState, _awaitableIsCompleted);
 
-        public MemoryPoolBlock IncomingStart()
+        public MemoryPoolIterator IncomingStart()
         {
             const int minimumSize = 2048;
 
+            MemoryPoolBlock block = null;
+
             if (_tail != null && minimumSize <= _tail.Data.Offset + _tail.Data.Count - _tail.End)
             {
-                _pinned = _tail;
+                block = _tail;
             }
             else
             {
-                _pinned = _memory.Lease();
+                block = _memory.Lease();
             }
 
-            return _pinned;
-        }
-
-        public MemoryPoolIterator End()
-        {
-            var block = IncomingStart();
+            if (_head == null)
+            {
+                _head = block;
+            }
+            else if (block != _tail)
+            {
+                Volatile.Write(ref _tail.Next, block);
+                _tail = block;
+            }
 
             return new MemoryPoolIterator(block, block.End);
         }
@@ -90,80 +78,46 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 if (count > 0)
                 {
-                    if (_tail == null)
-                    {
-                        _tail = _memory.Lease();
-                    }
-
-                    var iterator = new MemoryPoolIterator(_tail, _tail.End);
+                    var iterator = IncomingStart();
                     iterator.CopyFrom(buffer, offset, count);
-
-                    if (_head == null)
-                    {
-                        _head = _tail;
-                    }
-
-                    _tail = iterator.Block;
+                    IncomingComplete(iterator);
                 }
                 else
                 {
+                    // No more input
                     RemoteIntakeFin = true;
+                    Complete();
                 }
-
-                Complete();
             }
         }
 
-        public void IncomingComplete(int count, Exception error)
+        public Task IncomingComplete(MemoryPoolIterator end)
+        {
+            return IncomingComplete(end, error: null);
+        }
+
+        public Task IncomingComplete(MemoryPoolIterator end, Exception error)
         {
             lock (_sync)
             {
-                if (_pinned != null)
+                _tail = end.Block;
+
+                var length = new MemoryPoolIterator(_head).GetLength(end);
+
+                if (length > _threshold)
                 {
-                    _pinned.End += count;
-
-                    if (_head == null)
-                    {
-                        _head = _tail = _pinned;
-                    }
-                    else if (_tail == _pinned)
-                    {
-                        // NO-OP: this was a read into unoccupied tail-space
-                    }
-                    else
-                    {
-                        Volatile.Write(ref _tail.Next, _pinned);
-                        _tail = _pinned;
-                    }
-
-                    _pinned = null;
+                    _limitState = new LimitState();
+                    _limitState.Length = length;
                 }
 
-                if (count == 0)
-                {
-                    RemoteIntakeFin = true;
-                }
                 if (error != null)
                 {
                     _awaitableError = error;
                 }
 
                 Complete();
-            }
-        }
 
-        public void IncomingDeferred()
-        {
-            Debug.Assert(_pinned != null);
-
-            if (_pinned != null)
-            {
-                if (_pinned != _tail)
-                {
-                    _memory.Return(_pinned);
-                }
-
-                _pinned = null;
+                return _limitState?.Tcs.Task ?? TaskUtilities.CompletedTask;
             }
         }
 
@@ -198,6 +152,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             return new MemoryPoolIterator(_head);
         }
 
+        public void ConsumingComplete(MemoryPoolIterator end)
+        {
+            ConsumingComplete(end, end);
+        }
+
         public void ConsumingComplete(
             MemoryPoolIterator consumed,
             MemoryPoolIterator examined)
@@ -209,6 +168,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 if (!consumed.IsDefault)
                 {
+                    var lengthConsumed = new MemoryPoolIterator(_head).GetLength(consumed);
+
+                    if (_limitState != null)
+                    {
+                        _limitState.Length -= lengthConsumed;
+
+                        // Need to drain down to 1/2 to start the pipe again
+                        if (_limitState.Length < (_threshold / 2))
+                        {
+                            _threadPool.Complete(_limitState.Tcs);
+                        }
+                    }
+
                     returnStart = _head;
                     returnEnd = consumed.Block;
                     _head = consumed.Block;
@@ -272,7 +244,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else if (ReferenceEquals(awaitableState, _awaitableIsCompleted))
             {
-                continuation();
+                // Dispatch here to avoid stack diving
+                _threadPool.Run(continuation);
             }
             else
             {
@@ -284,8 +257,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 _manualResetEvent.Set();
 
-                continuation();
-                awaitableState();
+                _threadPool.Run(continuation);
+                _threadPool.Run(awaitableState);
             }
         }
 
@@ -327,6 +300,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             _head = null;
             _tail = null;
+        }
+
+        private class LimitState
+        {
+            public int Length { get; set; }
+
+            public TaskCompletionSource<object> Tcs { get; set; } = new TaskCompletionSource<object>();
         }
     }
 }

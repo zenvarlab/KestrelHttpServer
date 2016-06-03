@@ -15,6 +15,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private readonly Task _writeToLibuv;
         private readonly UvStreamHandle _socket;
 
+        private Task _backOffTask = TaskUtilities.CompletedTask;
+
         public SocketInput SocketInput => _socketInput;
 
         public SocketOutput2(KestrelThread thread,
@@ -26,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             IThreadPool threadPool)
         {
             _socket = socket;
-            _socketInput = new SocketInput(memory);
+            _socketInput = new SocketInput(memory, threadPool);
             _writeToLibuv = ProcessOutput(log, thread, connection, socket);
         }
 
@@ -37,7 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public MemoryPoolIterator ProducingStart()
         {
-            return SocketInput.End();
+            return SocketInput.IncomingStart();
         }
 
         public void Write(ArraySegment<byte> buffer, bool chunk = false)
@@ -45,22 +47,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             throw new NotImplementedException();
         }
 
-        public Task WriteAsync(ArraySegment<byte> buffer, bool chunk = false, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task WriteAsync(ArraySegment<byte> buffer, bool chunk = false, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (_socket.IsClosed)
             {
-                _socketInput.RemoteIntakeFin = true;
-                return TaskUtilities.CompletedTask;
+                return;
             }
+
+            await _backOffTask;
 
             if (buffer.Count > 0)
             {
-                // Use a task queue
-
-                var tail = ProducingStart();
+                var tail = SocketInput.IncomingStart();
                 if (tail.IsDefault)
                 {
-                    return TaskUtilities.CompletedTask;
+                    return;
                 }
 
                 if (chunk)
@@ -75,12 +76,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     ChunkWriter.WriteEndChunkBytes(ref tail);
                 }
 
-                ProducingComplete(tail);
-
-                // Handle back pressure here
+                _backOffTask = SocketInput.IncomingComplete(tail);
             }
-
-            return TaskUtilities.CompletedTask;
         }
 
         private async Task ProcessOutput(IKestrelTrace log, KestrelThread thread, Connection connection, UvStreamHandle socket)
@@ -99,10 +96,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     {
                         await SocketInput;
 
+                        // Switch to the UV thread
                         await thread;
 
                         var start = SocketInput.ConsumingStart();
-                        var end = SocketInput.End();
+                        var end = SocketInput.IncomingStart();
+
                         int bytes;
                         int buffers;
                         BytesBetween(start, end, out bytes, out buffers);
@@ -120,8 +119,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         }
                         finally
                         {
-                            // REVIEW: Should this happen on the thread pool thread?
-                            SocketInput.ConsumingComplete(end, end);
+                            SocketInput.ConsumingComplete(end);
                         }
 
                         if (_socket.IsClosed)
@@ -143,10 +141,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 }
                 finally
                 {
-                    // REVIEW: Who is responsible for disposing the socket output?
-                    SocketInput.Dispose();
                     socket.Dispose();
                     connection.OnSocketClosed();
+                    SocketInput.Dispose();
                 }
             }
         }
