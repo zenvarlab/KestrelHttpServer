@@ -17,7 +17,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 var begin = input.BeginRead();
                 int actual;
                 var end = begin.CopyTo(buffer, offset, count, out actual);
-                input.EndRead(end, end);
+                input.EndRead(end);
 
                 if (actual != 0)
                 {
@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 var begin = input.BeginRead();
                 int actual;
                 var end = begin.CopyTo(buffer, offset, count, out actual);
-                input.EndRead(end, end);
+                input.EndRead(end);
 
                 if (actual != 0)
                 {
