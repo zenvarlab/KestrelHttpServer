@@ -241,7 +241,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
         }
 
-        public void EndWrite(MemoryPoolIterator end)
+        public Task EndWrite(MemoryPoolIterator end)
         {
             Debug.Assert(!_lastStart.IsDefault);
 
@@ -254,6 +254,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
 
             ProducingCompleteNoPreComplete(end);
+            return TaskUtilities.CompletedTask;
         }
 
         private void ProducingCompleteNoPreComplete(MemoryPoolIterator end)

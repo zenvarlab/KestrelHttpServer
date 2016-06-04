@@ -101,7 +101,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             return new MemoryPoolIterator(_producingBlock);
         }
 
-        public void EndWrite(MemoryPoolIterator end)
+        public Task EndWrite(MemoryPoolIterator end)
         {
             var block = _producingBlock;
             while (block != end.Block)
@@ -139,6 +139,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             }
 
             end.Block.Pool.Return(end.Block);
+
+            return TaskUtilities.CompletedTask;
         }
     }
 }

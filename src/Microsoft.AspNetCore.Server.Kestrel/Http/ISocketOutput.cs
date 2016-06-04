@@ -30,6 +30,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         /// or <see cref="WriteAsync(ArraySegment{byte}, bool, CancellationToken)"/> is called afterwards.
         /// </summary>
         /// <param name="end">Points to the end of the committed data.</param>
-        void EndWrite(MemoryPoolIterator end);
+        Task EndWrite(MemoryPoolIterator end);
     }
 }

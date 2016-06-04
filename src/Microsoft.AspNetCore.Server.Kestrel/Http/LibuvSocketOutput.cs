@@ -34,9 +34,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _writeToLibuv = ProcessOutput(log, thread, connection, socket);
         }
 
-        public void EndWrite(MemoryPoolIterator end)
+        public Task EndWrite(MemoryPoolIterator end)
         {
-            OutputAwaitable.EndWrite(end);
+            return OutputAwaitable.EndWrite(end);
         }
 
         public MemoryPoolIterator BeginWrite()

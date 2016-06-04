@@ -11,8 +11,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
 {
     public class MockSocketOuptut : ISocketOutput
     {
-        public void EndWrite(MemoryPoolIterator end)
+        public Task EndWrite(MemoryPoolIterator end)
         {
+            return TaskUtilities.CompletedTask;
         }
 
         public MemoryPoolIterator BeginWrite()
