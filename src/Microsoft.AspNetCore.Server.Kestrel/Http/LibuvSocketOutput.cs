@@ -18,11 +18,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private readonly LibuvThread _thread;
         private readonly IThreadPool _threadPool;
 
-        public MemoryPoolAwaiter OutputAwaitable { get; }
+        public MemoryPoolChannel OutputChannel { get; }
 
         public LibuvSocketOutput(LibuvThread thread,
             UvStreamHandle socket,
-            MemoryPoolAwaiter outputAwaitable,
+            MemoryPoolChannel outputChannel,
             LibuvConnection connection,
             IKestrelTrace log,
             IThreadPool threadPool)
@@ -30,18 +30,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _socket = socket;
             _thread = thread;
             _threadPool = threadPool;
-            OutputAwaitable = outputAwaitable;
+            OutputChannel = outputChannel;
             _writeToLibuv = ProcessOutput(log, thread, connection, socket);
         }
 
         public Task EndWrite(MemoryPoolIterator end)
         {
-            return OutputAwaitable.EndWrite(end);
+            return OutputChannel.EndWrite(end);
         }
 
         public MemoryPoolIterator BeginWrite()
         {
-            return OutputAwaitable.BeginWrite();
+            return OutputChannel.BeginWrite();
         }
 
         public void Write(ArraySegment<byte> buffer, bool chunk = false)
@@ -60,7 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (buffer.Count > 0)
             {
-                var tail = OutputAwaitable.BeginWrite();
+                var tail = OutputChannel.BeginWrite();
                 if (tail.IsDefault)
                 {
                     return;
@@ -78,7 +78,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     ChunkWriter.WriteEndChunkBytes(ref tail);
                 }
 
-                _backOffTask = OutputAwaitable.EndWrite(tail);
+                _backOffTask = OutputChannel.EndWrite(tail);
             }
         }
 
@@ -96,13 +96,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     while (true)
                     {
-                        await OutputAwaitable;
+                        await OutputChannel;
 
                         // Switch to the UV thread
                         await thread;
 
-                        var start = OutputAwaitable.BeginRead();
-                        var end = OutputAwaitable.End();
+                        var start = OutputChannel.BeginRead();
+                        var end = OutputChannel.End();
 
                         int bytes;
                         int buffers;
@@ -124,7 +124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         }
                         finally
                         {
-                            OutputAwaitable.EndRead(end);
+                            OutputChannel.EndRead(end);
                         }
 
                         if (_socket.IsClosed)
@@ -150,7 +150,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     socket.Dispose();
                     connection.OnSocketClosed();
-                    OutputAwaitable.Dispose();
+                    OutputChannel.Dispose();
 
                     log.ConnectionStop(connection.ConnectionId);
                 }
@@ -162,7 +162,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 case ProduceEndType.SocketShutdown:
                 case ProduceEndType.SocketDisconnect:
-                    OutputAwaitable.AbortAwaiting();
+                    OutputChannel.AbortAwaiting();
                     break;
             }
         }

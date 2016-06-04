@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public LibuvConnectionContext(LibuvConnectionContext context) : base(context)
         {
-            InputAwaitable = context.InputAwaitable;
+            InputChannel = context.InputChannel;
             SocketOutput = context.SocketOutput;
             ConnectionControl = context.ConnectionControl;
             RemoteEndPoint = context.RemoteEndPoint;
@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             PrepareRequest = context.PrepareRequest;
         }
 
-        public MemoryPoolAwaiter InputAwaitable { get; set; }
+        public MemoryPoolChannel InputChannel { get; set; }
 
         public ISocketOutput SocketOutput { get; set; }
 

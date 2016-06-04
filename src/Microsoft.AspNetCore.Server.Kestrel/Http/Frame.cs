@@ -774,7 +774,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             SocketOutput.EndWrite(end);
         }
 
-        protected RequestLineStatus TakeStartLine(MemoryPoolAwaiter input)
+        protected RequestLineStatus TakeStartLine(MemoryPoolChannel input)
         {
             var scan = input.BeginRead();
             var consumed = scan;
@@ -954,7 +954,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             return true;
         }
 
-        public bool TakeMessageHeaders(MemoryPoolAwaiter input, FrameRequestHeaders requestHeaders)
+        public bool TakeMessageHeaders(MemoryPoolChannel input, FrameRequestHeaders requestHeaders)
         {
             var scan = input.BeginRead();
             var consumed = scan;

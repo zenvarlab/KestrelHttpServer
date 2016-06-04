@@ -32,15 +32,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 while (!_requestProcessingStopping)
                 {
-                    while (!_requestProcessingStopping && TakeStartLine(InputAwaitable) != RequestLineStatus.Done)
+                    while (!_requestProcessingStopping && TakeStartLine(InputChannel) != RequestLineStatus.Done)
                     {
-                        if (InputAwaitable.RemoteIntakeFin)
+                        if (InputChannel.RemoteIntakeFin)
                         {
                             // We need to attempt to consume start lines and headers even after
                             // SocketInput.RemoteIntakeFin is set to true to ensure we don't close a
                             // connection without giving the application a chance to respond to a request
                             // sent immediately before the a FIN from the client.
-                            var requestLineStatus = TakeStartLine(InputAwaitable);
+                            var requestLineStatus = TakeStartLine(InputChannel);
 
                             if (requestLineStatus == RequestLineStatus.Empty)
                             {
@@ -55,20 +55,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                             break;
                         }
 
-                        await InputAwaitable;
+                        await InputChannel;
                     }
 
                     InitializeHeaders();
 
-                    while (!_requestProcessingStopping && !TakeMessageHeaders(InputAwaitable, FrameRequestHeaders))
+                    while (!_requestProcessingStopping && !TakeMessageHeaders(InputChannel, FrameRequestHeaders))
                     {
-                        if (InputAwaitable.RemoteIntakeFin)
+                        if (InputChannel.RemoteIntakeFin)
                         {
                             // We need to attempt to consume start lines and headers even after
                             // SocketInput.RemoteIntakeFin is set to true to ensure we don't close a
                             // connection without giving the application a chance to respond to a request
                             // sent immediately before the a FIN from the client.
-                            if (!TakeMessageHeaders(InputAwaitable, FrameRequestHeaders))
+                            if (!TakeMessageHeaders(InputChannel, FrameRequestHeaders))
                             {
                                 RejectRequest($"Malformed request: invalid headers.");
                             }
@@ -76,7 +76,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                             break;
                         }
 
-                        await InputAwaitable;
+                        await InputChannel;
                     }
 
                     if (!_requestProcessingStopping)

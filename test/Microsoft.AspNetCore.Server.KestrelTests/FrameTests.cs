@@ -30,7 +30,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var trace = new KestrelTrace(new TestKestrelTrace());
             var ltp = new LoggingThreadPool(trace);
             using (var pool = new MemoryPool())
-            using (var socketInput = new MemoryPoolAwaiter(pool, ltp))
+            using (var socketInput = new MemoryPoolChannel(pool, ltp))
             {
                 var connectionContext = new LibuvConnectionContext()
                 {

@@ -6,9 +6,9 @@ using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public static class MemoryPoolAwaiterExtensions
+    public static class MemoryPoolChannelExtensions
     {
-        public static ValueTask<int> ReadAsync(this MemoryPoolAwaiter input, byte[] buffer, int offset, int count)
+        public static ValueTask<int> ReadAsync(this MemoryPoolChannel input, byte[] buffer, int offset, int count)
         {
             while (input.IsCompleted)
             {
@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             return new ValueTask<int>(input.ReadAsyncAwaited(buffer, offset, count));
         }
 
-        private static async Task<int> ReadAsyncAwaited(this MemoryPoolAwaiter input, byte[] buffer, int offset, int count)
+        private static async Task<int> ReadAsyncAwaited(this MemoryPoolChannel input, byte[] buffer, int offset, int count)
         {
             while (true)
             {

@@ -150,7 +150,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             public override ValueTask<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
-                return _context.InputAwaitable.ReadAsync(buffer.Array, buffer.Offset, buffer.Array == null ? 8192 : buffer.Count);
+                return _context.InputChannel.ReadAsync(buffer.Array, buffer.Offset, buffer.Array == null ? 8192 : buffer.Count);
             }
         }
 
@@ -169,7 +169,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             public override ValueTask<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
-                var input = _context.InputAwaitable;
+                var input = _context.InputChannel;
 
                 var inputLengthLimit = (int)Math.Min(_inputLength, int.MaxValue);
                 var limit = buffer.Array == null ? inputLengthLimit : Math.Min(buffer.Count, inputLengthLimit);
@@ -178,7 +178,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     return new ValueTask<int>(0);
                 }
 
-                var task = _context.InputAwaitable.ReadAsync(buffer.Array, buffer.Offset, limit);
+                var task = _context.InputChannel.ReadAsync(buffer.Array, buffer.Offset, limit);
 
                 if (task.IsCompleted)
                 {
@@ -232,10 +232,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             public override ValueTask<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
-                return new ValueTask<int>(ReadStateMachineAsync(_context.InputAwaitable, buffer, cancellationToken));
+                return new ValueTask<int>(ReadStateMachineAsync(_context.InputChannel, buffer, cancellationToken));
             }
 
-            private async Task<int> ReadStateMachineAsync(MemoryPoolAwaiter input, ArraySegment<byte> buffer, CancellationToken cancellationToken)
+            private async Task<int> ReadStateMachineAsync(MemoryPoolChannel input, ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
                 while (_mode < Mode.Trailer)
                 {
@@ -360,7 +360,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 return 0;
             }
 
-            private void ParseChunkedPrefix(MemoryPoolAwaiter input)
+            private void ParseChunkedPrefix(MemoryPoolChannel input)
             {
                 var scan = input.BeginRead();
                 var consumed = scan;
@@ -420,7 +420,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 }
             }
 
-            private void ParseExtension(MemoryPoolAwaiter input)
+            private void ParseExtension(MemoryPoolChannel input)
             {
                 var scan = input.BeginRead();
                 var consumed = scan;
@@ -464,7 +464,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 }
             }
 
-            private int ReadChunkedData(MemoryPoolAwaiter input, byte[] buffer, int offset, int count)
+            private int ReadChunkedData(MemoryPoolChannel input, byte[] buffer, int offset, int count)
             {
                 var scan = input.BeginRead();
                 int actual;
@@ -487,7 +487,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 return actual;
             }
 
-            private void ParseChunkedSuffix(MemoryPoolAwaiter input)
+            private void ParseChunkedSuffix(MemoryPoolChannel input)
             {
                 var scan = input.BeginRead();
                 var consumed = scan;
@@ -515,7 +515,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 }
             }
 
-            private void ParseChunkedTrailer(MemoryPoolAwaiter input)
+            private void ParseChunkedTrailer(MemoryPoolChannel input)
             {
                 var scan = input.BeginRead();
                 var consumed = scan;

@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class MemoryPoolAwaiter : ICriticalNotifyCompletion, IDisposable
+    public class MemoryPoolChannel : ICriticalNotifyCompletion, IDisposable
     {
         private static readonly Action _awaitableIsCompleted = () => { };
         private static readonly Action _awaitableIsNotCompleted = () => { };
@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private readonly IThreadPool _threadPool;
 
 
-        public MemoryPoolAwaiter(MemoryPool memory, IThreadPool threadPool, int threshold = 10 * 1024)
+        public MemoryPoolChannel(MemoryPool memory, IThreadPool threadPool, int threshold = 10 * 1024)
         {
             _memory = memory;
             _awaitableState = _awaitableIsNotCompleted;
@@ -233,7 +233,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             Complete();
         }
 
-        public MemoryPoolAwaiter GetAwaiter()
+        public MemoryPoolChannel GetAwaiter()
         {
             return this;
         }

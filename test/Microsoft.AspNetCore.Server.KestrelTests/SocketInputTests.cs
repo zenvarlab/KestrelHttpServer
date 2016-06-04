@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var trace = new KestrelTrace(new TestKestrelTrace());
             var ltp = new LoggingThreadPool(trace);
             using (var memory2 = new MemoryPool())
-            using (var socketInput = new MemoryPoolAwaiter(memory2, ltp))
+            using (var socketInput = new MemoryPoolChannel(memory2, ltp))
             {
                 var task0Threw = false;
                 var task1Threw = false;
@@ -82,13 +82,13 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var defultIter = new MemoryPoolIterator();
 
             // Calling ConsumingComplete without a preceding calling to ConsumingStart fails
-            using (var socketInput = new MemoryPoolAwaiter(null, null))
+            using (var socketInput = new MemoryPoolChannel(null, null))
             {
                 Assert.Throws<InvalidOperationException>(() => socketInput.EndRead(defultIter, defultIter));
             }
 
             // Calling ConsumingComplete twice in a row fails
-            using (var socketInput = new MemoryPoolAwaiter(null, null))
+            using (var socketInput = new MemoryPoolChannel(null, null))
             {
                 socketInput.BeginRead();
                 socketInput.EndRead(defultIter, defultIter);
@@ -96,7 +96,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             }
 
             // Calling ConsumingStart twice in a row fails
-            using (var socketInput = new MemoryPoolAwaiter(null, null))
+            using (var socketInput = new MemoryPoolChannel(null, null))
             {
                 socketInput.BeginRead();
                 Assert.Throws<InvalidOperationException>(() => socketInput.BeginRead());
@@ -110,7 +110,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(t.Exception.InnerException.Message, "Concurrent reads are not supported.");
         }
 
-        private async Task AwaitAsTaskAsync(MemoryPoolAwaiter socketInput)
+        private async Task AwaitAsTaskAsync(MemoryPoolChannel socketInput)
         {
             await socketInput;
         }

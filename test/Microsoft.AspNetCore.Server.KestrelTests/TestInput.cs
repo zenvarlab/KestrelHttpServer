@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             FrameContext = context;
 
             _memoryPool = new MemoryPool();
-            FrameContext.InputAwaitable = new MemoryPoolAwaiter(_memoryPool, ltp);
+            FrameContext.InputChannel = new MemoryPoolChannel(_memoryPool, ltp);
         }
 
         public Frame FrameContext { get; set; }
@@ -36,10 +36,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public void Add(string text, bool fin = false)
         {
             var data = System.Text.Encoding.ASCII.GetBytes(text);
-            FrameContext.InputAwaitable.EndWrite(data, 0, data.Length);
+            FrameContext.InputChannel.EndWrite(data, 0, data.Length);
             if (fin)
             {
-                FrameContext.InputAwaitable.RemoteIntakeFin = true;
+                FrameContext.InputChannel.RemoteIntakeFin = true;
             }
         }
 
@@ -90,7 +90,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         public void Dispose()
         {
-            FrameContext.InputAwaitable.Dispose();
+            FrameContext.InputChannel.Dispose();
             _memoryPool.Dispose();
         }
     }
