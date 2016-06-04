@@ -36,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public void Add(string text, bool fin = false)
         {
             var data = System.Text.Encoding.ASCII.GetBytes(text);
-            FrameContext.InputChannel.Write(data, 0, data.Length);
+            FrameContext.InputChannel.WriteAsync(data, 0, data.Length);
             if (fin)
             {
                 FrameContext.InputChannel.RemoteIntakeFin = true;

@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             IKestrelTrace logger,
             IThreadPool threadPool)
         {
-            SocketInput = new MemoryPoolChannel(memory, threadPool);
+            InputChannel = new MemoryPoolChannel(memory, threadPool);
             SocketOutput = new StreamSocketOutput(connectionId, filteredStream, memory, logger);
 
             _connectionId = connectionId;
@@ -35,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             _memory = memory;
         }
 
-        public MemoryPoolChannel SocketInput { get; private set; }
+        public MemoryPoolChannel InputChannel { get; private set; }
 
         public ISocketOutput SocketOutput { get; private set; }
 
@@ -56,7 +56,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
 
         public void Dispose()
         {
-            SocketInput.Dispose();
+            InputChannel.Dispose();
         }
         
         private async Task FilterInputAsync(MemoryPoolBlock block)
@@ -64,7 +64,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             int bytesRead;
             while ((bytesRead = await _filteredStream.ReadAsync(block.Array, block.Data.Offset, block.Data.Count)) != 0)
             {
-                SocketInput.Write(block.Array, block.Data.Offset, bytesRead);
+                await InputChannel.WriteAsync(block.Array, block.Data.Offset, bytesRead);
             }
         }
 
@@ -74,22 +74,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
 
             if (copyAsyncTask.IsFaulted)
             {
-                SocketInput.AbortAwaiting();
+                InputChannel.AbortAwaiting();
                 _log.LogError(0, copyAsyncTask.Exception, "FilteredStreamAdapter.CopyToAsync");
             }
             else if (copyAsyncTask.IsCanceled)
             {
-                SocketInput.AbortAwaiting();
+                InputChannel.AbortAwaiting();
                 _log.LogError("FilteredStreamAdapter.CopyToAsync canceled.");
             }
             else if (_aborted)
             {
-                SocketInput.AbortAwaiting();
+                InputChannel.AbortAwaiting();
             }
 
             try
             {
-                SocketInput.IncomingFin();
+                InputChannel.IncomingFin();
             }
             catch (Exception ex)
             {

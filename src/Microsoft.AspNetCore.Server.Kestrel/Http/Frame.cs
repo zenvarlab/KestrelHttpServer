@@ -437,13 +437,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public void Flush()
         {
             ProduceStartAndFireOnStarting().GetAwaiter().GetResult();
-            OutputChannel.Write(_emptyData);
+            OutputChannel.WriteAsync(_emptyData);
         }
 
         public async Task FlushAsync(CancellationToken cancellationToken)
         {
             await ProduceStartAndFireOnStarting();
-            await OutputChannel.Write(_emptyData); //, cancellationToken: cancellationToken);
+            await OutputChannel.WriteAsync(_emptyData); //, cancellationToken: cancellationToken);
         }
 
         public void Write(ArraySegment<byte> data)
@@ -460,7 +460,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                OutputChannel.Write(data);
+                OutputChannel.WriteAsync(data).GetAwaiter().GetResult();
             }
         }
 
@@ -481,7 +481,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                return OutputChannel.Write(data); //cancellationToken: cancellationToken);
+                return OutputChannel.WriteAsync(data); //cancellationToken: cancellationToken);
             }
         }
 
@@ -499,7 +499,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                await OutputChannel.Write(data); //cancellationToken: cancellationToken);
+                await OutputChannel.WriteAsync(data); //cancellationToken: cancellationToken);
             }
         }
 
@@ -532,7 +532,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private Task WriteChunkedResponseSuffix()
         {
-            return OutputChannel.Write(_endChunkedResponseBytes);
+            return OutputChannel.WriteAsync(_endChunkedResponseBytes);
         }
 
         private static ArraySegment<byte> CreateAsciiByteArraySegment(string text)
@@ -554,7 +554,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
             {
 
-                OutputChannel.Write(_continueBytes);
+                OutputChannel.WriteAsync(_continueBytes).GetAwaiter().GetResult();
             }
         }
 
@@ -676,7 +676,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ProduceStart(appCompleted: true);
 
             // Force flush
-            await OutputChannel.Write(_emptyData);
+            await OutputChannel.WriteAsync(_emptyData);
 
             await WriteSuffix();
         }
@@ -789,7 +789,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             responseHeaders.CopyTo(ref end);
             end.CopyFrom(_bytesEndHeaders, 0, _bytesEndHeaders.Length);
 
-            OutputChannel.EndWrite(end);
+            OutputChannel.EndWrite(end).GetAwaiter().GetResult();
         }
 
         protected RequestLineStatus TakeStartLine(MemoryPoolChannel input)

@@ -78,17 +78,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             return new MemoryPoolIterator(_tail, _tail.End);
         }
 
-        public Task Write(byte[] buffer)
+        public Task WriteAsync(byte[] buffer)
         {
-            return Write(buffer, 0, buffer.Length);
+            return WriteAsync(buffer, 0, buffer.Length);
         }
 
-        public Task Write(ArraySegment<byte> buffer)
+        public Task WriteAsync(ArraySegment<byte> buffer)
         {
-            return Write(buffer.Array, buffer.Offset, buffer.Count);
+            return WriteAsync(buffer.Array, buffer.Offset, buffer.Count);
         }
 
-        public Task Write(byte[] buffer, int offset, int count)
+        public Task WriteAsync(byte[] buffer, int offset, int count)
         {
             lock (_sync)
             {
@@ -142,7 +142,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public void IncomingFin()
         {
             // Force a FIN
-            Write(null, 0, 0);
+            WriteAsync(null, 0, 0);
         }
 
         private void Complete()
