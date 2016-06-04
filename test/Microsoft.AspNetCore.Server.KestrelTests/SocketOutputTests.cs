@@ -34,7 +34,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
 
             using (var memory = new MemoryPool())
-            using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            using (var kestrelEngine = new LibuvEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
 
@@ -85,7 +85,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
 
             using (var memory = new MemoryPool())
-            using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            using (var kestrelEngine = new LibuvEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
 
@@ -153,7 +153,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
 
             using (var memory = new MemoryPool())
-            using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            using (var kestrelEngine = new LibuvEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
 
@@ -226,7 +226,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
 
             using (var memory = new MemoryPool())
-            using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            using (var kestrelEngine = new LibuvEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
 
@@ -336,7 +336,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
 
             using (var memory = new MemoryPool())
-            using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            using (var kestrelEngine = new LibuvEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
 
@@ -424,7 +424,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
 
             using (var memory = new MemoryPool())
-            using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            using (var kestrelEngine = new LibuvEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
 
@@ -510,7 +510,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
 
             using (var memory = new MemoryPool())
-            using (var kestrelEngine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            using (var kestrelEngine = new LibuvEngine(mockLibuv, new TestServiceContext()))
             {
                 kestrelEngine.Start(count: 1);
 

@@ -75,7 +75,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [MemberData(nameof(ConnectionFilterData))]
         public void EngineCanStartAndStop(TestServiceContext testContext)
         {
-            var engine = new KestrelEngine(testContext);
+            var engine = new LibuvEngine(testContext);
             engine.Start(1);
             engine.Dispose();
         }
@@ -85,7 +85,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public void ListenerCanCreateAndDispose(TestServiceContext testContext)
         {
             testContext.App = App;
-            var engine = new KestrelEngine(testContext);
+            var engine = new LibuvEngine(testContext);
             engine.Start(1);
             var address = ServerAddress.FromUrl("http://127.0.0.1:0/");
             var started = engine.CreateServer(address);
@@ -98,7 +98,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public void ConnectionCanReadAndWrite(TestServiceContext testContext)
         {
             testContext.App = App;
-            var engine = new KestrelEngine(testContext);
+            var engine = new LibuvEngine(testContext);
             engine.Start(1);
             var address = ServerAddress.FromUrl("http://127.0.0.1:0/");
             var started = engine.CreateServer(address);

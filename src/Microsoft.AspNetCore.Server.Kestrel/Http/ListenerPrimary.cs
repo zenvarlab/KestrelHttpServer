@@ -36,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public async Task StartAsync(
             string pipeName,
             ServerAddress address,
-            KestrelThread thread)
+            LibuvThread thread)
         {
             _pipeName = pipeName;
 

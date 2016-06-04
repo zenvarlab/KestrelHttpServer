@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         private readonly IKestrelTrace _logger;
         public MultipleLoopTests()
         {
-            var engine = new KestrelEngine(new TestServiceContext());
+            var engine = new LibuvEngine(new TestServiceContext());
             _uv = engine.Libuv;
             _logger = engine.Log;
         }

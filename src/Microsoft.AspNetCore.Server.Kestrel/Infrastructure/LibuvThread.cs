@@ -15,9 +15,9 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
     /// <summary>
-    /// Summary description for KestrelThread
+    /// Summary description for LibuvThread
     /// </summary>
-    public class KestrelThread : ICriticalNotifyCompletion
+    public class LibuvThread : ICriticalNotifyCompletion
     {
         // maximum times the work queues swapped and are processed in a single pass
         // as completing a task may immediately have write data to put on the network
@@ -27,7 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private static readonly Action<object, object> _postCallbackAdapter = (callback, state) => ((Action<object>)callback).Invoke(state);
         private static readonly Action<object, object> _postAsyncCallbackAdapter = (callback, state) => ((Action<object>)callback).Invoke(state);
 
-        private readonly KestrelEngine _engine;
+        private readonly LibuvEngine _engine;
         private readonly IApplicationLifetime _appLifetime;
         private readonly Thread _thread;
         private readonly UvLoopHandle _loop;
@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private readonly IKestrelTrace _log;
         private readonly IThreadPool _threadPool;
 
-        public KestrelThread(KestrelEngine engine)
+        public LibuvThread(LibuvEngine engine)
         {
             _engine = engine;
             _appLifetime = engine.AppLifetime;
@@ -162,9 +162,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             _post.Send();
         }
 
-        private void Post(Action<KestrelThread> callback)
+        private void Post(Action<LibuvThread> callback)
         {
-            Post(thread => callback((KestrelThread)thread), this);
+            Post(thread => callback((LibuvThread)thread), this);
         }
 
         public Task PostAsync(Action<object> callback, object state)
@@ -336,7 +336,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             return wasWork;
         }
 
-        public KestrelThread GetAwaiter() => this;
+        public LibuvThread GetAwaiter() => this;
 
         public bool IsCompleted => Thread.CurrentThread.ManagedThreadId == _thread.ManagedThreadId;
 

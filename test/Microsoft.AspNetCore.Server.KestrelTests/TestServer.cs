@@ -13,7 +13,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
     /// </summary>
     public class TestServer : IDisposable
     {
-        private KestrelEngine _engine;
+        private LibuvEngine _engine;
         private IDisposable _server;
         private ServerAddress _address;
 
@@ -38,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
             try
             {
-                _engine = new KestrelEngine(context);
+                _engine = new LibuvEngine(context);
                 _engine.Start(1);
                 _address = ServerAddress.FromUrl(serverAddress);
                 _server = _engine.CreateServer(_address);

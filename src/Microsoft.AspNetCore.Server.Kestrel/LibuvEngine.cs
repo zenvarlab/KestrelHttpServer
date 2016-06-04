@@ -9,28 +9,28 @@ using Microsoft.AspNetCore.Server.Kestrel.Networking;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
-    public class KestrelEngine : ServiceContext, IDisposable
+    public class LibuvEngine : ServiceContext, IDisposable
     {
-        public KestrelEngine(ServiceContext context)
+        public LibuvEngine(ServiceContext context)
             : this(new Libuv(), context)
         { }
 
         // For testing
-        internal KestrelEngine(Libuv uv, ServiceContext context)
+        internal LibuvEngine(Libuv uv, ServiceContext context)
            : base(context)
         {
             Libuv = uv;
-            Threads = new List<KestrelThread>();
+            Threads = new List<LibuvThread>();
         }
 
         public Libuv Libuv { get; private set; }
-        public List<KestrelThread> Threads { get; private set; }
+        public List<LibuvThread> Threads { get; private set; }
 
         public void Start(int count)
         {
             for (var index = 0; index < count; index++)
             {
-                Threads.Add(new KestrelThread(this));
+                Threads.Add(new LibuvThread(this));
             }
 
             foreach (var thread in Threads)

@@ -36,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private readonly MemoryPoolAwaiter _rawInputAwaitable;
         private readonly MemoryPoolAwaiter _outputAwaitable;
 
-        private readonly SocketOutput2 _rawSocketOutput;
+        private readonly LibuvSocketOutput _rawSocketOutput;
 
         private readonly object _stateLock = new object();
         private ConnectionState _connectionState;
@@ -56,7 +56,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             // _rawSocketOutput = new SocketOutput(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool, WriteReqPool);
             _rawInputAwaitable = inputAwaitable;
-            _rawSocketOutput = new SocketOutput2(Thread, _socket, outputAwaitable, this, Log, ThreadPool);
+            _rawSocketOutput = new LibuvSocketOutput(Thread, _socket, outputAwaitable, this, Log, ThreadPool);
         }
 
         // Internal for testing

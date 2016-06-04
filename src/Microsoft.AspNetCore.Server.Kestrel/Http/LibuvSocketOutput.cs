@@ -9,18 +9,18 @@ using Microsoft.AspNetCore.Server.Kestrel.Networking;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class SocketOutput2 : ISocketOutput
+    public class LibuvSocketOutput : ISocketOutput
     {
         private readonly Task _writeToLibuv;
         private readonly UvStreamHandle _socket;
 
         private Task _backOffTask = TaskUtilities.CompletedTask;
-        private readonly KestrelThread _thread;
+        private readonly LibuvThread _thread;
         private readonly IThreadPool _threadPool;
 
         public MemoryPoolAwaiter OutputAwaitable { get; }
 
-        public SocketOutput2(KestrelThread thread,
+        public LibuvSocketOutput(LibuvThread thread,
             UvStreamHandle socket,
             MemoryPoolAwaiter outputAwaitable,
             Connection connection,
@@ -82,7 +82,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
         }
 
-        private async Task ProcessOutput(IKestrelTrace log, KestrelThread thread, Connection connection, UvStreamHandle socket)
+        private async Task ProcessOutput(IKestrelTrace log, LibuvThread thread, Connection connection, UvStreamHandle socket)
         {
             // Reuse the awaiter
             var awaitable = new UVAwaitable<UvWriteReq>();

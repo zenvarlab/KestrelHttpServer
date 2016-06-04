@@ -17,7 +17,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var mockLibuv = new MockLibuv();
             
             using (var memory = new MemoryPool())
-            using (var engine = new KestrelEngine(mockLibuv, new TestServiceContext()))
+            using (var engine = new LibuvEngine(mockLibuv, new TestServiceContext()))
             {
                 engine.Start(count: 1);
 

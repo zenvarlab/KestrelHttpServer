@@ -67,7 +67,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             {
                 var dateHeaderValueManager = new DateHeaderValueManager();
                 var trace = new KestrelTrace(_logger);
-                var engine = new KestrelEngine(new ServiceContext
+                var engine = new LibuvEngine(new ServiceContext
                 {
                     FrameFactory = context =>
                     {
