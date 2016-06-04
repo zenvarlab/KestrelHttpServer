@@ -11,11 +11,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
 {
     public class MockSocketOuptut : ISocketOutput
     {
-        public void ProducingComplete(MemoryPoolIterator end)
+        public void EndWrite(MemoryPoolIterator end)
         {
         }
 
-        public MemoryPoolIterator ProducingStart()
+        public MemoryPoolIterator BeginWrite()
         {
             return new MemoryPoolIterator();
         }

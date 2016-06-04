@@ -176,9 +176,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 writeRequestedWh.Reset();
 
                 // Add more bytes to the write-behind buffer to prevent the next write from
-                var iter = socketOutput.ProducingStart();
+                var iter = socketOutput.BeginWrite();
                 iter.CopyFrom(halfWriteBehindBuffer);
-                socketOutput.ProducingComplete(iter);
+                socketOutput.EndWrite(iter);
 
                 // Act
                 var writeTask2 = socketOutput.WriteAsync(halfWriteBehindBuffer, default(CancellationToken));
@@ -521,7 +521,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var socketOutput = new SocketOutput(kestrelThread, socket, memory, new MockConnection(), "0", trace, ltp, new Queue<UvWriteReq>());
 
                 // block 1
-                var start = socketOutput.ProducingStart();
+                var start = socketOutput.BeginWrite();
                 start.Block.End = start.Block.Data.Offset + start.Block.Data.Count;
 
                 // block 2
@@ -531,7 +531,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                 var end = new MemoryPoolIterator(block2, block2.End);
 
-                socketOutput.ProducingComplete(end);
+                socketOutput.EndWrite(end);
 
                 // A call to Write is required to ensure a write is scheduled
                 socketOutput.WriteAsync(default(ArraySegment<byte>), default(CancellationToken));

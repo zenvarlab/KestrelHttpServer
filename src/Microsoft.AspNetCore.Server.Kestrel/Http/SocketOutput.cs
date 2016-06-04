@@ -100,7 +100,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 if (buffer.Count > 0)
                 {
-                    var tail = ProducingStart();
+                    var tail = BeginWrite();
                     if (tail.IsDefault)
                     {
                         return TaskUtilities.CompletedTask;
@@ -224,7 +224,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
         }
 
-        public MemoryPoolIterator ProducingStart()
+        public MemoryPoolIterator BeginWrite()
         {
             lock (_returnLock)
             {
@@ -241,7 +241,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
         }
 
-        public void ProducingComplete(MemoryPoolIterator end)
+        public void EndWrite(MemoryPoolIterator end)
         {
             Debug.Assert(!_lastStart.IsDefault);
 

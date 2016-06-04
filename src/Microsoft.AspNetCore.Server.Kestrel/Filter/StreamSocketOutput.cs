@@ -95,13 +95,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             await _outputStream.WriteAsync(_endChunkBytes, 0, _endChunkBytes.Length, cancellationToken);
         }
 
-        public MemoryPoolIterator ProducingStart()
+        public MemoryPoolIterator BeginWrite()
         {
             _producingBlock = _memory.Lease();
             return new MemoryPoolIterator(_producingBlock);
         }
 
-        public void ProducingComplete(MemoryPoolIterator end)
+        public void EndWrite(MemoryPoolIterator end)
         {
             var block = _producingBlock;
             while (block != end.Block)

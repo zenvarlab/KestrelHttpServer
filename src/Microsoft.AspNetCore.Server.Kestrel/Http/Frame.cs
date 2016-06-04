@@ -699,7 +699,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             var hasConnection = responseHeaders.HasConnection;
 
-            var end = SocketOutput.ProducingStart();
+            var end = SocketOutput.BeginWrite();
             if (_keepAlive && hasConnection)
             {
                 foreach (var connectionValue in responseHeaders.HeaderConnection)
@@ -771,7 +771,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             responseHeaders.CopyTo(ref end);
             end.CopyFrom(_bytesEndHeaders, 0, _bytesEndHeaders.Length);
 
-            SocketOutput.ProducingComplete(end);
+            SocketOutput.EndWrite(end);
         }
 
         protected RequestLineStatus TakeStartLine(MemoryPoolAwaiter input)
