@@ -14,12 +14,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
     {
         private readonly static Task<int> _initialCachedTask = Task.FromResult(0);
 
-        private readonly SocketInput _input;
+        private readonly MemoryPoolAwaiter _input;
         private readonly ISocketOutput _output;
 
         private Task<int> _cachedTask = _initialCachedTask;
 
-        public LibuvStream(SocketInput input, ISocketOutput output)
+        public LibuvStream(MemoryPoolAwaiter input, ISocketOutput output)
         {
             _input = input;
             _output = output;

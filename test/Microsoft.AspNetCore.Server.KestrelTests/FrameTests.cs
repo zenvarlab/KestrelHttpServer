@@ -30,7 +30,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var trace = new KestrelTrace(new TestKestrelTrace());
             var ltp = new LoggingThreadPool(trace);
             using (var pool = new MemoryPool())
-            using (var socketInput = new SocketInput(pool, ltp))
+            using (var socketInput = new MemoryPoolAwaiter(pool, ltp))
             {
                 var connectionContext = new ConnectionContext()
                 {
@@ -41,7 +41,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var headerCollection = new FrameRequestHeaders();
 
                 var headerArray = Encoding.ASCII.GetBytes(rawHeaders);
-                socketInput.IncomingData(headerArray, 0, headerArray.Length);
+                socketInput.EndWrite(headerArray, 0, headerArray.Length);
 
                 var success = frame.TakeMessageHeaders(socketInput, headerCollection);
 
@@ -49,7 +49,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 Assert.Equal(numHeaders, headerCollection.Count());
 
                 // Assert TakeMessageHeaders consumed all the input
-                var scan = socketInput.ConsumingStart();
+                var scan = socketInput.BeginRead();
                 Assert.True(scan.IsEnd);
             }
         }

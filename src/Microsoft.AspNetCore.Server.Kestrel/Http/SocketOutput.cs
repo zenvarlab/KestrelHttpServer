@@ -315,10 +315,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
         }
 
-        private async void ScheduleWrite()
+        private void ScheduleWrite()
         {
-            await _thread;
+            _thread.Post(state => ((SocketOutput)state).DoWrite(), this);
+        }
 
+        private void DoWrite()
+        {
             WriteContext writingContext = null;
 
             if (Monitor.TryEnter(_contextLock))

@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public ConnectionContext(ConnectionContext context) : base(context)
         {
-            SocketInput = context.SocketInput;
+            InputAwaitable = context.InputAwaitable;
             SocketOutput = context.SocketOutput;
             ConnectionControl = context.ConnectionControl;
             RemoteEndPoint = context.RemoteEndPoint;
@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             PrepareRequest = context.PrepareRequest;
         }
 
-        public SocketInput SocketInput { get; set; }
+        public MemoryPoolAwaiter InputAwaitable { get; set; }
 
         public ISocketOutput SocketOutput { get; set; }
 

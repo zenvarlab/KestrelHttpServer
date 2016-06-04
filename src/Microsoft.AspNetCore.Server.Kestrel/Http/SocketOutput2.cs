@@ -11,34 +11,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
     public class SocketOutput2 : ISocketOutput
     {
-        private readonly SocketInput _socketInput;
         private readonly Task _writeToLibuv;
         private readonly UvStreamHandle _socket;
 
         private Task _backOffTask = TaskUtilities.CompletedTask;
+        private readonly KestrelThread _thread;
+        private readonly IThreadPool _threadPool;
 
-        public SocketInput SocketInput => _socketInput;
+        public MemoryPoolAwaiter OutputAwaitable { get; }
 
         public SocketOutput2(KestrelThread thread,
             UvStreamHandle socket,
-            MemoryPool memory,
+            MemoryPoolAwaiter outputAwaitable,
             Connection connection,
             IKestrelTrace log,
             IThreadPool threadPool)
         {
             _socket = socket;
-            _socketInput = new SocketInput(memory, threadPool);
+            _thread = thread;
+            _threadPool = threadPool;
+            OutputAwaitable = outputAwaitable;
             _writeToLibuv = ProcessOutput(log, thread, connection, socket);
         }
 
         public void ProducingComplete(MemoryPoolIterator end)
         {
-            SocketInput.IncomingComplete(end);
+            OutputAwaitable.EndWrite(end);
         }
 
         public MemoryPoolIterator ProducingStart()
         {
-            return SocketInput.IncomingStart();
+            return OutputAwaitable.BeginWrite();
         }
 
         public void Write(ArraySegment<byte> buffer, bool chunk = false)
@@ -57,7 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (buffer.Count > 0)
             {
-                var tail = SocketInput.IncomingStart();
+                var tail = OutputAwaitable.BeginWrite();
                 if (tail.IsDefault)
                 {
                     return;
@@ -75,7 +78,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     ChunkWriter.WriteEndChunkBytes(ref tail);
                 }
 
-                _backOffTask = SocketInput.IncomingComplete(tail);
+                _backOffTask = OutputAwaitable.EndWrite(tail);
             }
         }
 
@@ -93,13 +96,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     while (true)
                     {
-                        await SocketInput;
+                        await OutputAwaitable;
 
                         // Switch to the UV thread
                         await thread;
 
-                        var start = SocketInput.ConsumingStart();
-                        var end = SocketInput.End();
+                        var start = OutputAwaitable.BeginRead();
+                        var end = OutputAwaitable.End();
 
                         int bytes;
                         int buffers;
@@ -121,7 +124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         }
                         finally
                         {
-                            SocketInput.ConsumingComplete(end);
+                            OutputAwaitable.EndRead(end);
                         }
 
                         if (_socket.IsClosed)
@@ -147,7 +150,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     socket.Dispose();
                     connection.OnSocketClosed();
-                    SocketInput.Dispose();
+                    OutputAwaitable.Dispose();
 
                     log.ConnectionStop(connection.ConnectionId);
                 }
@@ -159,7 +162,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 case ProduceEndType.SocketShutdown:
                 case ProduceEndType.SocketDisconnect:
-                    SocketInput.AbortAwaiting();
+                    OutputAwaitable.AbortAwaiting();
                     break;
             }
         }

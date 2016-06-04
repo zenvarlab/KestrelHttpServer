@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var trace = new KestrelTrace(new TestKestrelTrace());
             var ltp = new LoggingThreadPool(trace);
             using (var memory2 = new MemoryPool())
-            using (var socketInput = new SocketInput(memory2, ltp))
+            using (var socketInput = new MemoryPoolAwaiter(memory2, ltp))
             {
                 var task0Threw = false;
                 var task1Threw = false;
@@ -82,24 +82,24 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var defultIter = new MemoryPoolIterator();
 
             // Calling ConsumingComplete without a preceding calling to ConsumingStart fails
-            using (var socketInput = new SocketInput(null, null))
+            using (var socketInput = new MemoryPoolAwaiter(null, null))
             {
-                Assert.Throws<InvalidOperationException>(() => socketInput.ConsumingComplete(defultIter, defultIter));
+                Assert.Throws<InvalidOperationException>(() => socketInput.EndRead(defultIter, defultIter));
             }
 
             // Calling ConsumingComplete twice in a row fails
-            using (var socketInput = new SocketInput(null, null))
+            using (var socketInput = new MemoryPoolAwaiter(null, null))
             {
-                socketInput.ConsumingStart();
-                socketInput.ConsumingComplete(defultIter, defultIter);
-                Assert.Throws<InvalidOperationException>(() => socketInput.ConsumingComplete(defultIter, defultIter));
+                socketInput.BeginRead();
+                socketInput.EndRead(defultIter, defultIter);
+                Assert.Throws<InvalidOperationException>(() => socketInput.EndRead(defultIter, defultIter));
             }
 
             // Calling ConsumingStart twice in a row fails
-            using (var socketInput = new SocketInput(null, null))
+            using (var socketInput = new MemoryPoolAwaiter(null, null))
             {
-                socketInput.ConsumingStart();
-                Assert.Throws<InvalidOperationException>(() => socketInput.ConsumingStart());
+                socketInput.BeginRead();
+                Assert.Throws<InvalidOperationException>(() => socketInput.BeginRead());
             }
         }
 
@@ -110,7 +110,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(t.Exception.InnerException.Message, "Concurrent reads are not supported.");
         }
 
-        private async Task AwaitAsTaskAsync(SocketInput socketInput)
+        private async Task AwaitAsTaskAsync(MemoryPoolAwaiter socketInput)
         {
             await socketInput;
         }

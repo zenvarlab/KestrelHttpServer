@@ -774,9 +774,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             SocketOutput.ProducingComplete(end);
         }
 
-        protected RequestLineStatus TakeStartLine(SocketInput input)
+        protected RequestLineStatus TakeStartLine(MemoryPoolAwaiter input)
         {
-            var scan = input.ConsumingStart();
+            var scan = input.BeginRead();
             var consumed = scan;
 
             try
@@ -928,7 +928,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             finally
             {
-                input.ConsumingComplete(consumed, scan);
+                input.EndRead(consumed, scan);
             }
         }
 
@@ -954,9 +954,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             return true;
         }
 
-        public bool TakeMessageHeaders(SocketInput input, FrameRequestHeaders requestHeaders)
+        public bool TakeMessageHeaders(MemoryPoolAwaiter input, FrameRequestHeaders requestHeaders)
         {
-            var scan = input.ConsumingStart();
+            var scan = input.BeginRead();
             var consumed = scan;
             try
             {
@@ -1087,7 +1087,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             finally
             {
-                input.ConsumingComplete(consumed, scan);
+                input.EndRead(consumed, scan);
             }
         }
 

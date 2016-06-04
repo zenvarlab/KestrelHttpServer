@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class SocketInput : ICriticalNotifyCompletion, IDisposable
+    public class MemoryPoolAwaiter : ICriticalNotifyCompletion, IDisposable
     {
         private static readonly Action _awaitableIsCompleted = () => { };
         private static readonly Action _awaitableIsNotCompleted = () => { };
@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private readonly IThreadPool _threadPool;
 
 
-        public SocketInput(MemoryPool memory, IThreadPool threadPool, int threshold = 10 * 1024)
+        public MemoryPoolAwaiter(MemoryPool memory, IThreadPool threadPool, int threshold = 10 * 1024)
         {
             _memory = memory;
             _awaitableState = _awaitableIsNotCompleted;
@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public bool IsCompleted => ReferenceEquals(_awaitableState, _awaitableIsCompleted);
 
-        public MemoryPoolIterator IncomingStart()
+        public MemoryPoolIterator BeginWrite()
         {
             const int minimumSize = 2048;
 
@@ -78,15 +78,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             return new MemoryPoolIterator(_tail, _tail.End);
         }
 
-        public void IncomingData(byte[] buffer, int offset, int count)
+        public void EndWrite(byte[] buffer, int offset, int count)
         {
             lock (_sync)
             {
                 if (count > 0)
                 {
-                    var iterator = IncomingStart();
+                    var iterator = BeginWrite();
                     iterator.CopyFrom(buffer, offset, count);
-                    IncomingComplete(iterator);
+                    EndWrite(iterator);
                 }
                 else
                 {
@@ -97,16 +97,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
         }
 
-        public Task IncomingComplete(MemoryPoolIterator end)
+        public Task EndWrite(MemoryPoolIterator end)
         {
-            return IncomingComplete(end, error: null);
+            return EndWrite(end, error: null);
         }
 
-        public Task IncomingComplete(MemoryPoolIterator end, Exception error)
+        public Task EndWrite(MemoryPoolIterator end, Exception error)
         {
             lock (_sync)
             {
                 _tail = end.Block;
+                _tail.End = end.Index;
 
                 var length = new MemoryPoolIterator(_head).GetLength(end);
 
@@ -130,7 +131,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public void IncomingFin()
         {
             // Force a FIN
-            IncomingData(null, 0, 0);
+            EndWrite(null, 0, 0);
         }
 
         private void Complete()
@@ -148,7 +149,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
         }
 
-        public MemoryPoolIterator ConsumingStart()
+        public MemoryPoolIterator BeginRead()
         {
             if (Interlocked.CompareExchange(ref _consumingState, 1, 0) != 0)
             {
@@ -158,12 +159,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             return new MemoryPoolIterator(_head);
         }
 
-        public void ConsumingComplete(MemoryPoolIterator end)
+        public void EndRead(MemoryPoolIterator end)
         {
-            ConsumingComplete(end, end);
+            EndRead(end, end);
         }
 
-        public void ConsumingComplete(
+        public void EndRead(
             MemoryPoolIterator consumed,
             MemoryPoolIterator examined)
         {
@@ -232,7 +233,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             Complete();
         }
 
-        public SocketInput GetAwaiter()
+        public MemoryPoolAwaiter GetAwaiter()
         {
             return this;
         }

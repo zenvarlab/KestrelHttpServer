@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             IKestrelTrace logger,
             IThreadPool threadPool)
         {
-            SocketInput = new SocketInput(memory, threadPool);
+            SocketInput = new MemoryPoolAwaiter(memory, threadPool);
             SocketOutput = new StreamSocketOutput(connectionId, filteredStream, memory, logger);
 
             _connectionId = connectionId;
@@ -35,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             _memory = memory;
         }
 
-        public SocketInput SocketInput { get; private set; }
+        public MemoryPoolAwaiter SocketInput { get; private set; }
 
         public ISocketOutput SocketOutput { get; private set; }
 
@@ -64,7 +64,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             int bytesRead;
             while ((bytesRead = await _filteredStream.ReadAsync(block.Array, block.Data.Offset, block.Data.Count)) != 0)
             {
-                SocketInput.IncomingData(block.Array, block.Data.Offset, bytesRead);
+                SocketInput.EndWrite(block.Array, block.Data.Offset, bytesRead);
             }
         }
 

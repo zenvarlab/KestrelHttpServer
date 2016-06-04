@@ -33,7 +33,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private FilteredStreamAdapter _filteredStreamAdapter;
         private Task _readInputTask;
 
-        private readonly SocketInput _rawSocketInput;
+        private readonly MemoryPoolAwaiter _rawInputAwaitable;
+        private readonly MemoryPoolAwaiter _outputAwaitable;
+
         private readonly SocketOutput2 _rawSocketOutput;
 
         private readonly object _stateLock = new object();
@@ -49,9 +51,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
 
-            _rawSocketInput = new SocketInput(Memory, ThreadPool);
+            var inputAwaitable = new MemoryPoolAwaiter(Memory, ThreadPool);
+            var outputAwaitable = new MemoryPoolAwaiter(Memory, ThreadPool);
+
             // _rawSocketOutput = new SocketOutput(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool, WriteReqPool);
-            _rawSocketOutput = new SocketOutput2(Thread, _socket, Memory, this, Log, ThreadPool);
+            _rawInputAwaitable = inputAwaitable;
+            _rawSocketOutput = new SocketOutput2(Thread, _socket, outputAwaitable, this, Log, ThreadPool);
         }
 
         // Internal for testing
@@ -85,7 +90,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                     _connectionState = ConnectionState.Open;
 
-                    SocketInput = _rawSocketInput;
+                    InputAwaitable = _rawInputAwaitable;
                     SocketOutput = _rawSocketOutput;
 
                     _frame = CreateFrame();
@@ -94,7 +99,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                _libuvStream = new LibuvStream(_rawSocketInput, _rawSocketOutput);
+                _libuvStream = new LibuvStream(_rawInputAwaitable, _rawSocketOutput);
 
                 _filterContext = new ConnectionFilterContext
                 {
@@ -145,7 +150,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         break;
                     case ConnectionState.Open:
                         _frame.Stop();
-                        SocketInput.CompleteAwaiting();
+                        InputAwaitable.CompleteAwaiting();
                         break;
                 }
 
@@ -182,17 +187,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             if (_filteredStreamAdapter != null)
             {
                 _filteredStreamAdapter.Abort();
-                _rawSocketInput.IncomingFin();
+                _rawInputAwaitable.IncomingFin();
                 _readInputTask.ContinueWith((task, state) =>
                 {
                     ((Connection)state)._filterContext.Connection.Dispose();
                     ((Connection)state)._filteredStreamAdapter.Dispose();
-                    ((Connection)state)._rawSocketInput.Dispose();
+                    ((Connection)state)._rawInputAwaitable.Dispose();
                 }, this);
             }
             else
             {
-                _rawSocketInput.Dispose();
+                _rawInputAwaitable.Dispose();
             }
 
             lock (_stateLock)
@@ -220,14 +225,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     {
                         _filteredStreamAdapter = new FilteredStreamAdapter(ConnectionId, _filterContext.Connection, Memory, Log, ThreadPool);
 
-                        SocketInput = _filteredStreamAdapter.SocketInput;
+                        InputAwaitable = _filteredStreamAdapter.SocketInput;
                         SocketOutput = _filteredStreamAdapter.SocketOutput;
 
                         _readInputTask = _filteredStreamAdapter.ReadInputAsync();
                     }
                     else
                     {
-                        SocketInput = _rawSocketInput;
+                        InputAwaitable = _rawInputAwaitable;
                         SocketOutput = _rawSocketOutput;
                     }
 
@@ -250,7 +255,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
-            _iterator = _rawSocketInput.IncomingStart();
+            _iterator = _rawInputAwaitable.BeginWrite();
             var result = _iterator.Block;
 
             return handle.Libuv.buf_init(
@@ -295,14 +300,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (readCount == 0)
             {
-                _rawSocketInput.RemoteIntakeFin = true;
+                _rawInputAwaitable.RemoteIntakeFin = true;
             }
             else
             {
                 _iterator.UpdateEnd(readCount);
             }
 
-            var task = _rawSocketInput.IncomingComplete(_iterator, error);
+            var task = _rawInputAwaitable.EndWrite(_iterator, error);
             _iterator = default(MemoryPoolIterator);
 
             if (errorDone)
