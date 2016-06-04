@@ -20,7 +20,7 @@ using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public abstract partial class Frame : ConnectionContext, IFrameControl
+    public abstract partial class Frame : LibuvConnectionContext, IFrameControl
     {
         private static readonly ArraySegment<byte> _endChunkedResponseBytes = CreateAsciiByteArraySegment("0\r\n\r\n");
         private static readonly ArraySegment<byte> _continueBytes = CreateAsciiByteArraySegment("HTTP/1.1 100 Continue\r\n\r\n");
@@ -65,7 +65,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private readonly string _pathBase;
 
-        public Frame(ConnectionContext context)
+        public Frame(LibuvConnectionContext context)
             : base(context)
         {
             _pathBase = context.ServerAddress.PathBase;

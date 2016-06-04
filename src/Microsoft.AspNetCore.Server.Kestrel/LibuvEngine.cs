@@ -66,7 +66,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     if (single)
                     {
                         var listener = usingPipes ?
-                            (Listener) new PipeListener(this) :
+                            (LibuvListener) new PipeListener(this) :
                             new TcpListener(this);
                         listeners.Add(listener);
                         listener.StartAsync(address, thread).Wait();
@@ -74,7 +74,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     else if (first)
                     {
                         var listener = usingPipes
-                            ? (ListenerPrimary) new PipeListenerPrimary(this)
+                            ? (LibuvListenerPrimary) new PipeListenerPrimary(this)
                             : new TcpListenerPrimary(this);
 
                         listeners.Add(listener);
@@ -83,7 +83,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     else
                     {
                         var listener = usingPipes
-                            ? (ListenerSecondary) new PipeListenerSecondary(this)
+                            ? (LibuvListenerSecondary) new PipeListenerSecondary(this)
                             : new TcpListenerSecondary(this);
                         listeners.Add(listener);
                         listener.StartAsync(pipeName, address, thread).Wait();

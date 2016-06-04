@@ -30,7 +30,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public IThreadPool ThreadPool { get; set; }
 
-        public Func<ConnectionContext, Frame> FrameFactory { get; set; }
+        public Func<LibuvConnectionContext, Frame> FrameFactory { get; set; }
 
         public DateHeaderValueManager DateHeaderValueManager { get; set; }
 

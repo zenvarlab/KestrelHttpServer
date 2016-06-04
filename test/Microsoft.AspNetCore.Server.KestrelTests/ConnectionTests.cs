@@ -22,16 +22,16 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 engine.Start(count: 1);
 
                 var trace = new TestKestrelTrace();
-                var context = new ListenerContext(new TestServiceContext())
+                var context = new LibuvListenerContext(new TestServiceContext())
                 {
                     FrameFactory = connectionContext => new Frame<HttpContext>(
                         new DummyApplication(httpContext => TaskUtilities.CompletedTask), connectionContext),
                     Memory = memory,
                     ServerAddress = ServerAddress.FromUrl("http://127.0.0.1:0"),
-                    Thread = engine.Threads[0]
+                    UvThread = engine.Threads[0]
                 };
                 var socket = new MockSocket(mockLibuv, Thread.CurrentThread.ManagedThreadId, trace);
-                var connection = new Connection(context, socket);
+                var connection = new LibuvConnection(context, socket);
                 connection.Start();
 
                 Libuv.uv_buf_t ignored;

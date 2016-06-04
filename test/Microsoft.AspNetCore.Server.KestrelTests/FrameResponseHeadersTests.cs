@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             var serverOptions = new KestrelServerOptions();
 
-            var connectionContext = new ConnectionContext
+            var connectionContext = new LibuvConnectionContext
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),

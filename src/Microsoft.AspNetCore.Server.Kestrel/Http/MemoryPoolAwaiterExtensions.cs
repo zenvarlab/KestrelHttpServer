@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public static class SocketInputExtensions
+    public static class MemoryPoolAwaiterExtensions
     {
         public static ValueTask<int> ReadAsync(this MemoryPoolAwaiter input, byte[] buffer, int offset, int count)
         {

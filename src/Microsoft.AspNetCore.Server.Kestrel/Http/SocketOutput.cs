@@ -26,7 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private readonly LibuvThread _thread;
         private readonly UvStreamHandle _socket;
-        private readonly Connection _connection;
+        private readonly LibuvConnection _connection;
         private readonly string _connectionId;
         private readonly IKestrelTrace _log;
         private readonly IThreadPool _threadPool;
@@ -58,7 +58,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             LibuvThread thread,
             UvStreamHandle socket,
             MemoryPool memory,
-            Connection connection,
+            LibuvConnection connection,
             string connectionId,
             IKestrelTrace log,
             IThreadPool threadPool,

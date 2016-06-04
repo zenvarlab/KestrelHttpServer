@@ -15,14 +15,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     /// A secondary listener is delegated requests from a primary listener via a named pipe or 
     /// UNIX domain socket.
     /// </summary>
-    public abstract class ListenerSecondary : ListenerContext, IAsyncDisposable
+    public abstract class LibuvListenerSecondary : LibuvListenerContext, IAsyncDisposable
     {
         private string _pipeName;
         private IntPtr _ptr;
         private Libuv.uv_buf_t _buf;
         private bool _closed;
 
-        protected ListenerSecondary(ServiceContext serviceContext) : base(serviceContext)
+        protected LibuvListenerSecondary(ServiceContext serviceContext) : base(serviceContext)
         {
             _ptr = Marshal.AllocHGlobal(4);
         }
@@ -38,19 +38,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _buf = thread.Loop.Libuv.buf_init(_ptr, 4);
 
             ServerAddress = address;
-            Thread = thread;
-            ConnectionManager = new ConnectionManager(thread);
+            UvThread = thread;
+            ConnectionManager = new LibuvConnectionManager(thread);
 
             DispatchPipe = new UvPipeHandle(Log);
 
             var tcs = new TaskCompletionSource<int>(this);
-            Thread.Post(state => StartCallback((TaskCompletionSource<int>)state), tcs);
+            UvThread.Post(state => StartCallback((TaskCompletionSource<int>)state), tcs);
             return tcs.Task;
         }
 
         private static void StartCallback(TaskCompletionSource<int> tcs)
         {
-            var listener = (ListenerSecondary)tcs.Task.AsyncState;
+            var listener = (LibuvListenerSecondary)tcs.Task.AsyncState;
             listener.StartedCallback(tcs);
         }
 
@@ -58,9 +58,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             try
             {
-                DispatchPipe.Init(Thread.Loop, Thread.QueueCloseHandle, true);
+                DispatchPipe.Init(UvThread.Loop, UvThread.QueueCloseHandle, true);
                 var connect = new UvConnectRequest(Log);
-                connect.Init(Thread.Loop);
+                connect.Init(UvThread.Loop);
                 connect.Connect(
                     DispatchPipe,
                     _pipeName,
@@ -76,7 +76,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private static void ConnectCallback(UvConnectRequest connect, int status, Exception error, TaskCompletionSource<int> tcs)
         {
-            var listener = (ListenerSecondary)tcs.Task.AsyncState;
+            var listener = (LibuvListenerSecondary)tcs.Task.AsyncState;
             listener.ConnectedCallback(connect, status, error, tcs);
         }
 
@@ -92,8 +92,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             try
             {
                 DispatchPipe.ReadStart(
-                    (handle, status2, state) => ((ListenerSecondary)state)._buf,
-                    (handle, status2, state) => ((ListenerSecondary)state).ReadStartCallback(handle, status2),
+                    (handle, status2, state) => ((LibuvListenerSecondary)state)._buf,
+                    (handle, status2, state) => ((LibuvListenerSecondary)state).ReadStartCallback(handle, status2),
                     this);
 
                 tcs.SetResult(0);
@@ -112,7 +112,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 if (status != Constants.EOF)
                 {
                     Exception ex;
-                    Thread.Loop.Libuv.Check(status, out ex);
+                    UvThread.Loop.Libuv.Check(status, out ex);
                     Log.LogError(0, ex, "DispatchPipe.ReadStart");
                 }
 
@@ -138,7 +138,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 return;
             }
 
-            var connection = new Connection(this, acceptSocket);
+            var connection = new LibuvConnection(this, acceptSocket);
             connection.Start();
         }
 
@@ -162,9 +162,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             // If the event loop isn't running and we try to wait on this Post
             // to complete, then KestrelEngine will never be disposed and
             // the exception that stopped the event loop will never be surfaced.
-            if (Thread.FatalError == null)
+            if (UvThread.FatalError == null)
             {
-                await Thread;
+                await UvThread;
 
                 DispatchPipe.Dispose();
 
@@ -178,7 +178,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 await ConnectionManager.WaitForConnectionCloseAsync().ConfigureAwait(false);
 
-                await Thread;
+                await UvThread;
 
                 while (WriteReqPool.Count > 0)
                 {

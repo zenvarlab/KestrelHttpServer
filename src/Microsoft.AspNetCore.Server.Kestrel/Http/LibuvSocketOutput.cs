@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public LibuvSocketOutput(LibuvThread thread,
             UvStreamHandle socket,
             MemoryPoolAwaiter outputAwaitable,
-            Connection connection,
+            LibuvConnection connection,
             IKestrelTrace log,
             IThreadPool threadPool)
         {
@@ -82,7 +82,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
         }
 
-        private async Task ProcessOutput(IKestrelTrace log, LibuvThread thread, Connection connection, UvStreamHandle socket)
+        private async Task ProcessOutput(IKestrelTrace log, LibuvThread thread, LibuvConnection connection, UvStreamHandle socket)
         {
             // Reuse the awaiter
             var awaitable = new UVAwaitable<UvWriteReq>();

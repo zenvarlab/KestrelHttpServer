@@ -9,9 +9,9 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
     /// <summary>
-    /// Implementation of <see cref="Listener"/> that uses UNIX domain sockets as its transport.
+    /// Implementation of <see cref="LibuvListener"/> that uses UNIX domain sockets as its transport.
     /// </summary>
-    public class PipeListener : Listener
+    public class PipeListener : LibuvListener
     {
         public PipeListener(ServiceContext serviceContext) : base(serviceContext)
         {
@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         protected override UvStreamHandle CreateListenSocket()
         {
             var socket = new UvPipeHandle(Log);
-            socket.Init(Thread.Loop, Thread.QueueCloseHandle, false);
+            socket.Init(UvThread.Loop, UvThread.QueueCloseHandle, false);
             socket.Bind(ServerAddress.UnixPipePath);
             socket.Listen(Constants.ListenBacklog, (stream, status, error, state) => ConnectionCallback(stream, status, error, state), this);
             return socket;
@@ -40,7 +40,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             try
             {
-                acceptSocket.Init(Thread.Loop, Thread.QueueCloseHandle, false);
+                acceptSocket.Init(UvThread.Loop, UvThread.QueueCloseHandle, false);
                 listenSocket.Accept(acceptSocket);
                 DispatchConnection(acceptSocket);
             }

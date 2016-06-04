@@ -11,11 +11,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     /// <summary>
     /// Base class for listeners in Kestrel. Listens for incoming connections
     /// </summary>
-    public abstract class Listener : ListenerContext, IAsyncDisposable
+    public abstract class LibuvListener : LibuvListenerContext, IAsyncDisposable
     {
         private bool _closed;
 
-        protected Listener(ServiceContext serviceContext)
+        protected LibuvListener(ServiceContext serviceContext)
             : base(serviceContext)
         {
         }
@@ -27,10 +27,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             LibuvThread thread)
         {
             ServerAddress = address;
-            Thread = thread;
-            ConnectionManager = new ConnectionManager(thread);
+            UvThread = thread;
+            ConnectionManager = new LibuvConnectionManager(thread);
 
-            await Thread;
+            await UvThread;
 
             ListenSocket = CreateListenSocket();
         }
@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         protected static void ConnectionCallback(UvStreamHandle stream, int status, Exception error, object state)
         {
-            var listener = (Listener)state;
+            var listener = (LibuvListener)state;
 
             if (error != null)
             {
@@ -63,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         protected virtual void DispatchConnection(UvStreamHandle socket)
         {
-            var connection = new Connection(this, socket);
+            var connection = new LibuvConnection(this, socket);
             connection.Start();
         }
 
@@ -73,9 +73,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             // If the event loop isn't running and we try to wait on this Post
             // to complete, then KestrelEngine will never be disposed and
             // the exception that stopped the event loop will never be surfaced.
-            if (Thread.FatalError == null && ListenSocket != null)
+            if (UvThread.FatalError == null && ListenSocket != null)
             {
-                await Thread;
+                await UvThread;
 
                 ListenSocket.Dispose();
 
@@ -87,7 +87,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 await ConnectionManager.WaitForConnectionCloseAsync().ConfigureAwait(false);
 
-                await Thread;
+                await UvThread;
 
                 while (WriteReqPool.Count > 0)
                 {

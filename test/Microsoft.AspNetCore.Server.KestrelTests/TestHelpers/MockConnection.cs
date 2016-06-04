@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Http;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
 {
-    public class MockConnection : Connection, IDisposable
+    public class MockConnection : LibuvConnection, IDisposable
     {
         public MockConnection()
         {

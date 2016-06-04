@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             using (var pool = new MemoryPool())
             using (var socketInput = new MemoryPoolAwaiter(pool, ltp))
             {
-                var connectionContext = new ConnectionContext()
+                var connectionContext = new LibuvConnectionContext()
                 {
                     DateHeaderValueManager = new DateHeaderValueManager(),
                     ServerAddress = ServerAddress.FromUrl("http://localhost:5000")
@@ -58,7 +58,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public void ResetResetsScheme()
         {
             // Arrange
-            var connectionContext = new ConnectionContext()
+            var connectionContext = new LibuvConnectionContext()
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000")
@@ -77,7 +77,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public void ThrowsWhenStatusCodeIsSetAfterResponseStarted()
         {
             // Arrange
-            var connectionContext = new ConnectionContext()
+            var connectionContext = new LibuvConnectionContext()
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
@@ -99,7 +99,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public void ThrowsWhenReasonPhraseIsSetAfterResponseStarted()
         {
             // Arrange
-            var connectionContext = new ConnectionContext()
+            var connectionContext = new LibuvConnectionContext()
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
@@ -121,7 +121,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public void InitializeHeadersResetsRequestHeaders()
         {
             // Arrange
-            var connectionContext = new ConnectionContext()
+            var connectionContext = new LibuvConnectionContext()
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
@@ -144,7 +144,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public void InitializeHeadersResetsResponseHeaders()
         {
             // Arrange
-            var connectionContext = new ConnectionContext()
+            var connectionContext = new LibuvConnectionContext()
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),

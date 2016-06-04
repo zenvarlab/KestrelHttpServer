@@ -7,17 +7,17 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class ConnectionContext : ListenerContext
+    public class LibuvConnectionContext : LibuvListenerContext
     {
-        public ConnectionContext()
+        public LibuvConnectionContext()
         {
         }
 
-        public ConnectionContext(ListenerContext context) : base(context)
+        public LibuvConnectionContext(LibuvListenerContext context) : base(context)
         {
         }
 
-        public ConnectionContext(ConnectionContext context) : base(context)
+        public LibuvConnectionContext(LibuvConnectionContext context) : base(context)
         {
             InputAwaitable = context.InputAwaitable;
             SocketOutput = context.SocketOutput;

@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class Connection : ConnectionContext, IConnectionControl
+    public class LibuvConnection : LibuvConnectionContext, IConnectionControl
     {
         // Base32 encoding - in ascii sort order for easy text based sorting
         private static readonly string _encode32Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
@@ -43,7 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private TaskCompletionSource<object> _socketClosedTcs;
         private MemoryPoolIterator _iterator;
 
-        public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
+        public LibuvConnection(LibuvListenerContext context, UvStreamHandle socket) : base(context)
         {
             _socket = socket;
             socket.Connection = this;
@@ -56,11 +56,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             // _rawSocketOutput = new SocketOutput(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool, WriteReqPool);
             _rawInputAwaitable = inputAwaitable;
-            _rawSocketOutput = new LibuvSocketOutput(Thread, _socket, outputAwaitable, this, Log, ThreadPool);
+            _rawSocketOutput = new LibuvSocketOutput(UvThread, _socket, outputAwaitable, this, Log, ThreadPool);
         }
 
         // Internal for testing
-        internal Connection()
+        internal LibuvConnection()
         {
         }
 
@@ -111,7 +111,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     ServerOptions.ConnectionFilter.OnConnectionAsync(_filterContext).ContinueWith((task, state) =>
                     {
-                        var connection = (Connection)state;
+                        var connection = (LibuvConnection)state;
 
                         if (task.IsFaulted)
                         {
@@ -190,9 +190,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 _rawInputAwaitable.IncomingFin();
                 _readInputTask.ContinueWith((task, state) =>
                 {
-                    ((Connection)state)._filterContext.Connection.Dispose();
-                    ((Connection)state)._filteredStreamAdapter.Dispose();
-                    ((Connection)state)._rawInputAwaitable.Dispose();
+                    ((LibuvConnection)state)._filterContext.Connection.Dispose();
+                    ((LibuvConnection)state)._filteredStreamAdapter.Dispose();
+                    ((LibuvConnection)state)._rawInputAwaitable.Dispose();
                 }, this);
             }
             else
@@ -250,7 +250,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private static Libuv.uv_buf_t AllocCallback(UvStreamHandle handle, int suggestedSize, object state)
         {
-            return ((Connection)state).OnAlloc(handle, suggestedSize);
+            return ((LibuvConnection)state).OnAlloc(handle, suggestedSize);
         }
 
         private Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
@@ -265,7 +265,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private static void ReadCallback(UvStreamHandle handle, int status, object state)
         {
-            ((Connection)state).OnRead(handle, status);
+            ((LibuvConnection)state).OnRead(handle, status);
         }
 
         private async void OnRead(UvStreamHandle handle, int status)
@@ -324,7 +324,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     await task;
 
                     // Get back onto the UV thread
-                    await Thread;
+                    await UvThread;
 
                     // Resume pumping data from the socket
                     ((IConnectionControl)this).Resume();

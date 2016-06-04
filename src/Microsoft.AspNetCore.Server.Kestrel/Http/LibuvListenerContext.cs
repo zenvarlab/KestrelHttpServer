@@ -7,24 +7,24 @@ using Microsoft.AspNetCore.Server.Kestrel.Networking;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class ListenerContext : ServiceContext
+    public class LibuvListenerContext : ServiceContext
     {
-        public ListenerContext()
+        public LibuvListenerContext()
         {
         }
 
-        public ListenerContext(ServiceContext serviceContext) 
+        public LibuvListenerContext(ServiceContext serviceContext) 
             : base(serviceContext)
         {
             Memory = new MemoryPool();
             WriteReqPool = new Queue<UvWriteReq>(SocketOutput.MaxPooledWriteReqs);
         }
 
-        public ListenerContext(ListenerContext listenerContext)
+        public LibuvListenerContext(LibuvListenerContext listenerContext)
             : base(listenerContext)
         {
             ServerAddress = listenerContext.ServerAddress;
-            Thread = listenerContext.Thread;
+            UvThread = listenerContext.UvThread;
             Memory = listenerContext.Memory;
             ConnectionManager = listenerContext.ConnectionManager;
             WriteReqPool = listenerContext.WriteReqPool;
@@ -33,11 +33,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public ServerAddress ServerAddress { get; set; }
 
-        public LibuvThread Thread { get; set; }
+        public LibuvThread UvThread { get; set; }
 
         public MemoryPool Memory { get; set; }
 
-        public ConnectionManager ConnectionManager { get; set; }
+        public LibuvConnectionManager ConnectionManager { get; set; }
 
         public Queue<UvWriteReq> WriteReqPool { get; set; }
     }

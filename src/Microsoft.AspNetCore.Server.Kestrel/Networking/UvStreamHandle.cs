@@ -29,7 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Networking
         {
         }
 
-        public Connection Connection { get; set; }
+        public LibuvConnection Connection { get; set; }
 
         protected override bool ReleaseHandle()
         {

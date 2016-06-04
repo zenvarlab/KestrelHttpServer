@@ -8,9 +8,9 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
     /// <summary>
-    /// Implementation of <see cref="Listener"/> that uses TCP sockets as its transport.
+    /// Implementation of <see cref="LibuvListener"/> that uses TCP sockets as its transport.
     /// </summary>
-    public class TcpListener : Listener
+    public class TcpListener : LibuvListener
     {
         public TcpListener(ServiceContext serviceContext) : base(serviceContext)
         {
@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         protected override UvStreamHandle CreateListenSocket()
         {
             var socket = new UvTcpHandle(Log);
-            socket.Init(Thread.Loop, Thread.QueueCloseHandle);
+            socket.Init(UvThread.Loop, UvThread.QueueCloseHandle);
             socket.NoDelay(ServerOptions.NoDelay);
             socket.Bind(ServerAddress);
 
@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             try
             {
-                acceptSocket.Init(Thread.Loop, Thread.QueueCloseHandle);
+                acceptSocket.Init(UvThread.Loop, UvThread.QueueCloseHandle);
                 acceptSocket.NoDelay(ServerOptions.NoDelay);
                 listenSocket.Accept(acceptSocket);
                 DispatchConnection(acceptSocket);
