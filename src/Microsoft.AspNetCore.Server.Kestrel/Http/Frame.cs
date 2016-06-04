@@ -437,13 +437,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public void Flush()
         {
             ProduceStartAndFireOnStarting().GetAwaiter().GetResult();
-            SocketOutput.Write(_emptyData);
+            OutputChannel.Write(_emptyData);
         }
 
         public async Task FlushAsync(CancellationToken cancellationToken)
         {
             await ProduceStartAndFireOnStarting();
-            await SocketOutput.WriteAsync(_emptyData, cancellationToken: cancellationToken);
+            await OutputChannel.Write(_emptyData); //, cancellationToken: cancellationToken);
         }
 
         public void Write(ArraySegment<byte> data)
@@ -460,7 +460,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                SocketOutput.Write(data);
+                OutputChannel.Write(data);
             }
         }
 
@@ -481,7 +481,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                return SocketOutput.WriteAsync(data, cancellationToken: cancellationToken);
+                return OutputChannel.Write(data); //cancellationToken: cancellationToken);
             }
         }
 
@@ -499,23 +499,40 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                await SocketOutput.WriteAsync(data, cancellationToken: cancellationToken);
+                await OutputChannel.Write(data); //cancellationToken: cancellationToken);
             }
         }
 
         private void WriteChunked(ArraySegment<byte> data)
         {
-            SocketOutput.Write(data, chunk: true);
+            var end = OutputChannel.BeginWrite();
+
+            ChunkWriter.WriteBeginChunkBytes(ref end, data.Count);
+
+            end.CopyFrom(data);
+
+            ChunkWriter.WriteEndChunkBytes(ref end);
+
+            // REVIEW: Should we block? or just fire and forget?
+            OutputChannel.EndWrite(end).GetAwaiter().GetResult();
         }
 
         private Task WriteChunkedAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
         {
-            return SocketOutput.WriteAsync(data, chunk: true, cancellationToken: cancellationToken);
+            var end = OutputChannel.BeginWrite();
+
+            ChunkWriter.WriteBeginChunkBytes(ref end, data.Count);
+
+            end.CopyFrom(data);
+
+            ChunkWriter.WriteEndChunkBytes(ref end);
+
+            return OutputChannel.EndWrite(end);
         }
 
         private Task WriteChunkedResponseSuffix()
         {
-            return SocketOutput.WriteAsync(_endChunkedResponseBytes);
+            return OutputChannel.Write(_endChunkedResponseBytes);
         }
 
         private static ArraySegment<byte> CreateAsciiByteArraySegment(string text)
@@ -536,7 +553,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 RequestHeaders.TryGetValue("Expect", out expect) &&
                 (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
             {
-                SocketOutput.Write(_continueBytes);
+
+                OutputChannel.Write(_continueBytes);
             }
         }
 
@@ -658,7 +676,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ProduceStart(appCompleted: true);
 
             // Force flush
-            await SocketOutput.WriteAsync(_emptyData);
+            await OutputChannel.Write(_emptyData);
 
             await WriteSuffix();
         }
@@ -699,7 +717,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             var hasConnection = responseHeaders.HasConnection;
 
-            var end = SocketOutput.BeginWrite();
+            var end = OutputChannel.BeginWrite();
             if (_keepAlive && hasConnection)
             {
                 foreach (var connectionValue in responseHeaders.HeaderConnection)
@@ -771,7 +789,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             responseHeaders.CopyTo(ref end);
             end.CopyFrom(_bytesEndHeaders, 0, _bytesEndHeaders.Length);
 
-            SocketOutput.EndWrite(end);
+            OutputChannel.EndWrite(end);
         }
 
         protected RequestLineStatus TakeStartLine(MemoryPoolChannel input)

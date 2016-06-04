@@ -19,6 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             AppLifetime = context.AppLifetime;
             Log = context.Log;
             ThreadPool = context.ThreadPool;
+            Memory = context.Memory;
             FrameFactory = context.FrameFactory;
             DateHeaderValueManager = context.DateHeaderValueManager;
             ServerOptions = context.ServerOptions;
@@ -29,6 +30,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         public IKestrelTrace Log { get; set; }
 
         public IThreadPool ThreadPool { get; set; }
+
+        public MemoryPool Memory { get; set; }
 
         public Func<LibuvConnectionContext, Frame> FrameFactory { get; set; }
 

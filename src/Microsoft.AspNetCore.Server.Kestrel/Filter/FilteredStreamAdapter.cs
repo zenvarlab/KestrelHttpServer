@@ -64,7 +64,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             int bytesRead;
             while ((bytesRead = await _filteredStream.ReadAsync(block.Array, block.Data.Offset, block.Data.Count)) != 0)
             {
-                SocketInput.EndWrite(block.Array, block.Data.Offset, bytesRead);
+                SocketInput.Write(block.Array, block.Data.Offset, bytesRead);
             }
         }
 

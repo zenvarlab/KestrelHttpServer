@@ -5,8 +5,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
     public interface IConnectionControl
     {
-        void Pause();
-        void Resume();
         void End(ProduceEndType endType);
     }
 }

@@ -15,28 +15,30 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public LibuvConnectionContext(LibuvListenerContext context) : base(context)
         {
+            InputChannel = new MemoryPoolChannel(Memory, ThreadPool);
+            OutputChannel = new MemoryPoolChannel(Memory, ThreadPool);
         }
 
         public LibuvConnectionContext(LibuvConnectionContext context) : base(context)
         {
-            InputChannel = context.InputChannel;
-            SocketOutput = context.SocketOutput;
             ConnectionControl = context.ConnectionControl;
             RemoteEndPoint = context.RemoteEndPoint;
             LocalEndPoint = context.LocalEndPoint;
             ConnectionId = context.ConnectionId;
+            InputChannel = context.InputChannel;
+            OutputChannel = context.OutputChannel;
             PrepareRequest = context.PrepareRequest;
         }
-
-        public MemoryPoolChannel InputChannel { get; set; }
-
-        public ISocketOutput SocketOutput { get; set; }
 
         public IConnectionControl ConnectionControl { get; set; }
 
         public IPEndPoint RemoteEndPoint { get; set; }
 
         public IPEndPoint LocalEndPoint { get; set; }
+
+        public MemoryPoolChannel InputChannel { get; set; }
+
+        public MemoryPoolChannel OutputChannel { get; set; }
 
         public string ConnectionId { get; set; }
 

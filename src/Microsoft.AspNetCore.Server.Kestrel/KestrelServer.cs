@@ -67,7 +67,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             {
                 var dateHeaderValueManager = new DateHeaderValueManager();
                 var trace = new KestrelTrace(_logger);
-                var engine = new LibuvEngine(new ServiceContext
+                var pool = new MemoryPool();
+                var threadPool = new LoggingThreadPool(trace);
+                var serviceContext = new ServiceContext
                 {
                     FrameFactory = context =>
                     {
@@ -75,10 +77,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     },
                     AppLifetime = _applicationLifetime,
                     Log = trace,
-                    ThreadPool = new LoggingThreadPool(trace),
+                    ThreadPool = threadPool,
+                    Memory = pool,
                     DateHeaderValueManager = dateHeaderValueManager,
                     ServerOptions = Options
-                });
+                };
+
+                var engine = new LibuvEngine(serviceContext);
 
                 _disposables.Push(engine);
                 _disposables.Push(dateHeaderValueManager);

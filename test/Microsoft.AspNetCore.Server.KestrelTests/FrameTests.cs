@@ -41,7 +41,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 var headerCollection = new FrameRequestHeaders();
 
                 var headerArray = Encoding.ASCII.GetBytes(rawHeaders);
-                socketInput.EndWrite(headerArray, 0, headerArray.Length);
+                socketInput.Write(headerArray, 0, headerArray.Length);
 
                 var success = frame.TakeMessageHeaders(socketInput, headerCollection);
 
@@ -81,8 +81,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
-                ServerOptions = new KestrelServerOptions(),
-                SocketOutput = new MockSocketOuptut()
+                ServerOptions = new KestrelServerOptions()
             };
             var frame = new Frame<object>(application: null, context: connectionContext);
             frame.InitializeHeaders();
@@ -103,8 +102,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
-                ServerOptions = new KestrelServerOptions(),
-                SocketOutput = new MockSocketOuptut()
+                ServerOptions = new KestrelServerOptions()
             };
             var frame = new Frame<object>(application: null, context: connectionContext);
             frame.InitializeHeaders();
@@ -125,8 +123,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
-                ServerOptions = new KestrelServerOptions(),
-                SocketOutput = new MockSocketOuptut()
+                ServerOptions = new KestrelServerOptions()
             };
             var frame = new Frame<object>(application: null, context: connectionContext);
             frame.InitializeHeaders();
@@ -148,8 +145,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             {
                 DateHeaderValueManager = new DateHeaderValueManager(),
                 ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
-                ServerOptions = new KestrelServerOptions(),
-                SocketOutput = new MockSocketOuptut()
+                ServerOptions = new KestrelServerOptions()
             };
             var frame = new Frame<object>(application: null, context: connectionContext);
             frame.InitializeHeaders();

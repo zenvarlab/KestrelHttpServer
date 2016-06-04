@@ -78,7 +78,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             return new MemoryPoolIterator(_tail, _tail.End);
         }
 
-        public void EndWrite(byte[] buffer, int offset, int count)
+        public Task Write(byte[] buffer)
+        {
+            return Write(buffer, 0, buffer.Length);
+        }
+
+        public Task Write(ArraySegment<byte> buffer)
+        {
+            return Write(buffer.Array, buffer.Offset, buffer.Count);
+        }
+
+        public Task Write(byte[] buffer, int offset, int count)
         {
             lock (_sync)
             {
@@ -86,13 +96,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     var iterator = BeginWrite();
                     iterator.CopyFrom(buffer, offset, count);
-                    EndWrite(iterator);
+                    return EndWrite(iterator);
                 }
                 else
                 {
                     // No more input
                     RemoteIntakeFin = true;
                     Complete();
+                    return TaskUtilities.CompletedTask;
                 }
             }
         }
@@ -131,7 +142,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public void IncomingFin()
         {
             // Force a FIN
-            EndWrite(null, 0, 0);
+            Write(null, 0, 0);
         }
 
         private void Complete()
