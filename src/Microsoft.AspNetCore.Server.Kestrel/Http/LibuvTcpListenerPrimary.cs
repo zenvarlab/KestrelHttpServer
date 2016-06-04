@@ -12,9 +12,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     /// <summary>
     /// An implementation of <see cref="LibuvListenerPrimary"/> using TCP sockets.
     /// </summary>
-    public class TcpListenerPrimary : LibuvListenerPrimary
+    public class LibuvTcpListenerPrimary : LibuvListenerPrimary
     {
-        public TcpListenerPrimary(ServiceContext serviceContext) : base(serviceContext)
+        public LibuvTcpListenerPrimary(ServiceContext serviceContext) : base(serviceContext)
         {
         }
 

@@ -8,9 +8,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     /// <summary>
     /// An implementation of <see cref="LibuvListenerSecondary"/> using TCP sockets.
     /// </summary>
-    public class TcpListenerSecondary : LibuvListenerSecondary
+    public class LibuvTcpListenerSecondary : LibuvListenerSecondary
     {
-        public TcpListenerSecondary(ServiceContext serviceContext) : base(serviceContext)
+        public LibuvTcpListenerSecondary(ServiceContext serviceContext) : base(serviceContext)
         {
         }
 

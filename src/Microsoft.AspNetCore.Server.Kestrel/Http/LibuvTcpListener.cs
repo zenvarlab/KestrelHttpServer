@@ -10,9 +10,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     /// <summary>
     /// Implementation of <see cref="LibuvListener"/> that uses TCP sockets as its transport.
     /// </summary>
-    public class TcpListener : LibuvListener
+    public class LibuvTcpListener : LibuvListener
     {
-        public TcpListener(ServiceContext serviceContext) : base(serviceContext)
+        public LibuvTcpListener(ServiceContext serviceContext) : base(serviceContext)
         {
         }
 
