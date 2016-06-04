@@ -27,10 +27,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             LibuvThread thread)
         {
             ServerAddress = address;
-            UvThread = thread;
+            LibuvThread = thread;
             ConnectionManager = new LibuvConnectionManager(thread);
 
-            await UvThread;
+            await LibuvThread;
 
             ListenSocket = CreateListenSocket();
         }
@@ -73,9 +73,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             // If the event loop isn't running and we try to wait on this Post
             // to complete, then KestrelEngine will never be disposed and
             // the exception that stopped the event loop will never be surfaced.
-            if (UvThread.FatalError == null && ListenSocket != null)
+            if (LibuvThread.FatalError == null && ListenSocket != null)
             {
-                await UvThread;
+                await LibuvThread;
 
                 ListenSocket.Dispose();
 
@@ -87,7 +87,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 await ConnectionManager.WaitForConnectionCloseAsync().ConfigureAwait(false);
 
-                await UvThread;
+                await LibuvThread;
 
                 while (WriteReqPool.Count > 0)
                 {

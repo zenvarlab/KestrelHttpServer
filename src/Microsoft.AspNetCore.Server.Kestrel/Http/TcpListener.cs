@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         protected override UvStreamHandle CreateListenSocket()
         {
             var socket = new UvTcpHandle(Log);
-            socket.Init(UvThread.Loop, UvThread.QueueCloseHandle);
+            socket.Init(LibuvThread.Loop, LibuvThread.QueueCloseHandle);
             socket.NoDelay(ServerOptions.NoDelay);
             socket.Bind(ServerAddress);
 
@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             try
             {
-                acceptSocket.Init(UvThread.Loop, UvThread.QueueCloseHandle);
+                acceptSocket.Init(LibuvThread.Loop, LibuvThread.QueueCloseHandle);
                 acceptSocket.NoDelay(ServerOptions.NoDelay);
                 listenSocket.Accept(acceptSocket);
                 DispatchConnection(acceptSocket);

@@ -28,7 +28,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                         new DummyApplication(httpContext => TaskUtilities.CompletedTask), connectionContext),
                     Memory = memory,
                     ServerAddress = ServerAddress.FromUrl("http://127.0.0.1:0"),
-                    UvThread = engine.Threads[0]
+                    LibuvThread = engine.Threads[0]
                 };
                 var socket = new MockSocket(mockLibuv, Thread.CurrentThread.ManagedThreadId, trace);
                 var connection = new LibuvConnection(context, socket);

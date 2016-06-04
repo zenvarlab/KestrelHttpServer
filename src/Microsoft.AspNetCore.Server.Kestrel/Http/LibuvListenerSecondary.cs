@@ -38,13 +38,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _buf = thread.Loop.Libuv.buf_init(_ptr, 4);
 
             ServerAddress = address;
-            UvThread = thread;
+            LibuvThread = thread;
             ConnectionManager = new LibuvConnectionManager(thread);
 
             DispatchPipe = new UvPipeHandle(Log);
 
             var tcs = new TaskCompletionSource<int>(this);
-            UvThread.Post(state => StartCallback((TaskCompletionSource<int>)state), tcs);
+            LibuvThread.Post(state => StartCallback((TaskCompletionSource<int>)state), tcs);
             return tcs.Task;
         }
 
@@ -58,9 +58,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             try
             {
-                DispatchPipe.Init(UvThread.Loop, UvThread.QueueCloseHandle, true);
+                DispatchPipe.Init(LibuvThread.Loop, LibuvThread.QueueCloseHandle, true);
                 var connect = new UvConnectRequest(Log);
-                connect.Init(UvThread.Loop);
+                connect.Init(LibuvThread.Loop);
                 connect.Connect(
                     DispatchPipe,
                     _pipeName,
@@ -112,7 +112,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 if (status != Constants.EOF)
                 {
                     Exception ex;
-                    UvThread.Loop.Libuv.Check(status, out ex);
+                    LibuvThread.Loop.Libuv.Check(status, out ex);
                     Log.LogError(0, ex, "DispatchPipe.ReadStart");
                 }
 
@@ -162,9 +162,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             // If the event loop isn't running and we try to wait on this Post
             // to complete, then KestrelEngine will never be disposed and
             // the exception that stopped the event loop will never be surfaced.
-            if (UvThread.FatalError == null)
+            if (LibuvThread.FatalError == null)
             {
-                await UvThread;
+                await LibuvThread;
 
                 DispatchPipe.Dispose();
 
@@ -178,7 +178,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 await ConnectionManager.WaitForConnectionCloseAsync().ConfigureAwait(false);
 
-                await UvThread;
+                await LibuvThread;
 
                 while (WriteReqPool.Count > 0)
                 {

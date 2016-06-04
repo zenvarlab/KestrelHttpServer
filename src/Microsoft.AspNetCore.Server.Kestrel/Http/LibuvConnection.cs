@@ -56,7 +56,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             // _rawSocketOutput = new SocketOutput(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool, WriteReqPool);
             _rawInputChannel = inputChannel;
-            _rawSocketOutput = new LibuvSocketOutput(UvThread, _socket, outputChannel, this, Log, ThreadPool);
+            _rawSocketOutput = new LibuvSocketOutput(LibuvThread, _socket, outputChannel, this, Log, ThreadPool);
         }
 
         // Internal for testing
@@ -324,7 +324,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     await task;
 
                     // Get back onto the UV thread
-                    await UvThread;
+                    await LibuvThread;
 
                     // Resume pumping data from the socket
                     ((IConnectionControl)this).Resume();

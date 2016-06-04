@@ -20,7 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         protected override UvStreamHandle CreateAcceptSocket()
         {
             var acceptSocket = new UvPipeHandle(Log);
-            acceptSocket.Init(UvThread.Loop, UvThread.QueueCloseHandle, false);
+            acceptSocket.Init(LibuvThread.Loop, LibuvThread.QueueCloseHandle, false);
             return acceptSocket;
         }
     }

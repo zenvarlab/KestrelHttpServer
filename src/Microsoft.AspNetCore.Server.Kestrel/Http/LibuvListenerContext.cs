@@ -24,7 +24,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             : base(listenerContext)
         {
             ServerAddress = listenerContext.ServerAddress;
-            UvThread = listenerContext.UvThread;
+            LibuvThread = listenerContext.LibuvThread;
             Memory = listenerContext.Memory;
             ConnectionManager = listenerContext.ConnectionManager;
             WriteReqPool = listenerContext.WriteReqPool;
@@ -33,7 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public ServerAddress ServerAddress { get; set; }
 
-        public LibuvThread UvThread { get; set; }
+        public LibuvThread LibuvThread { get; set; }
 
         public MemoryPool Memory { get; set; }
 

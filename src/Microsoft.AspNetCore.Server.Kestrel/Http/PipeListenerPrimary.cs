@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         protected override UvStreamHandle CreateListenSocket()
         {
             var socket = new UvPipeHandle(Log);
-            socket.Init(UvThread.Loop, UvThread.QueueCloseHandle, false);
+            socket.Init(LibuvThread.Loop, LibuvThread.QueueCloseHandle, false);
             socket.Bind(ServerAddress.UnixPipePath);
             socket.Listen(Constants.ListenBacklog, (stream, status, error, state) => ConnectionCallback(stream, status, error, state), this);
             return socket;
@@ -40,7 +40,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             try
             {
-                acceptSocket.Init(UvThread.Loop, UvThread.QueueCloseHandle, false);
+                acceptSocket.Init(LibuvThread.Loop, LibuvThread.QueueCloseHandle, false);
                 listenSocket.Accept(acceptSocket);
                 DispatchConnection(acceptSocket);
             }

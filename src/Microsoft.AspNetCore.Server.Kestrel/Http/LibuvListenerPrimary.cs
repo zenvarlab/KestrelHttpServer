@@ -49,10 +49,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             await StartAsync(address, thread);
 
-            await UvThread;
+            await LibuvThread;
 
             ListenPipe = new UvPipeHandle(Log);
-            ListenPipe.Init(UvThread.Loop, UvThread.QueueCloseHandle, false);
+            ListenPipe.Init(LibuvThread.Loop, LibuvThread.QueueCloseHandle, false);
             ListenPipe.Bind(_pipeName);
             ListenPipe.Listen(Constants.ListenBacklog,
                 (pipe, status, error, state) => ((LibuvListenerPrimary)state).OnListenPipe(pipe, status, error), this);
@@ -68,7 +68,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
 
             var dispatchPipe = new UvPipeHandle(Log);
-            dispatchPipe.Init(UvThread.Loop, UvThread.QueueCloseHandle, true);
+            dispatchPipe.Init(LibuvThread.Loop, LibuvThread.QueueCloseHandle, true);
 
             try
             {
@@ -96,7 +96,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 DetachFromIOCP(socket);
                 var dispatchPipe = _dispatchPipes[index];
                 var write = new UvWriteReq(Log);
-                write.Init(UvThread.Loop);
+                write.Init(LibuvThread.Loop);
                 write.Write2(
                     dispatchPipe,
                     _dummyMessage,
@@ -124,7 +124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             var statusBlock = new IO_STATUS_BLOCK();
             var socket = IntPtr.Zero;
-            UvThread.Loop.Libuv.uv_fileno(handle, ref socket);
+            LibuvThread.Loop.Libuv.uv_fileno(handle, ref socket);
 
             if (NtSetInformationFile(socket, out statusBlock, _fileCompletionInfoPtr,
                 (uint)Marshal.SizeOf<FILE_COMPLETION_INFORMATION>(), FileReplaceCompletionInformation) == STATUS_INVALID_INFO_CLASS)
@@ -163,9 +163,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 _fileCompletionInfoPtr = IntPtr.Zero;
             }
 
-            if (UvThread.FatalError == null && ListenPipe != null)
+            if (LibuvThread.FatalError == null && ListenPipe != null)
             {
-                await UvThread;
+                await LibuvThread;
 
                 ListenPipe.Dispose();
 
