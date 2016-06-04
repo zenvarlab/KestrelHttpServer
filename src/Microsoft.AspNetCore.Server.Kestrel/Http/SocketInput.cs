@@ -59,6 +59,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 block = _memory.Lease();
             }
 
+            // REVIEW: This needs to be inside the lock
             if (_head == null)
             {
                 _head = block;
@@ -70,6 +71,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
 
             return new MemoryPoolIterator(block, block.End);
+        }
+
+        public MemoryPoolIterator End()
+        {
+            return new MemoryPoolIterator(_tail, _tail.End);
         }
 
         public void IncomingData(byte[] buffer, int offset, int count)

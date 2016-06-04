@@ -23,7 +23,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             UvStreamHandle socket,
             MemoryPool memory,
             Connection connection,
-            string connectionId,
             IKestrelTrace log,
             IThreadPool threadPool)
         {
@@ -100,7 +99,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         await thread;
 
                         var start = SocketInput.ConsumingStart();
-                        var end = SocketInput.IncomingStart();
+                        var end = SocketInput.End();
 
                         int bytes;
                         int buffers;
@@ -109,13 +108,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         try
                         {
                             req.Write(socket, start, end, buffers, UVAwaitable<UvWriteReq>.Callback, awaitable);
-                            await awaitable;
+                            int status = await awaitable;
+                            log.ConnectionWriteCallback(connection.ConnectionId, status);
                         }
-                        catch
+                        catch (Exception ex)
                         {
                             // Abort the connection for any failed write
                             // Queued on threadpool so get it in as first op.
                             connection.Abort();
+
+                            log.ConnectionError(connection.ConnectionId, ex);
                         }
                         finally
                         {
@@ -137,13 +139,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     var shutdownReq = new UvShutdownReq(log);
                     shutdownReq.Init(thread.Loop);
                     shutdownReq.Shutdown(socket, UVAwaitable<UvShutdownReq>.Callback, shutdownAwaitable);
-                    await shutdownAwaitable;
+                    int status = await shutdownAwaitable;
+
+                    log.ConnectionWroteFin(connection.ConnectionId, status);
                 }
                 finally
                 {
                     socket.Dispose();
                     connection.OnSocketClosed();
                     SocketInput.Dispose();
+
+                    log.ConnectionStop(connection.ConnectionId);
                 }
             }
         }
@@ -197,7 +203,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 Exception exception;
                 req.Libuv.Check(status, out exception);
                 awaitable._exception = exception;
-
                 awaitable._status = status;
 
                 var continuation = Interlocked.Exchange(ref awaitable._callback, CALLBACK_RAN);
@@ -210,12 +215,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             public int GetResult()
             {
-                if (_exception != null)
+                var exception = _exception;
+                var status = _status;
+
+                // Reset the awaitable state
+                _exception = null;
+                _status = 0;
+
+                if (exception != null)
                 {
-                    throw _exception;
+                    throw exception;
                 }
 
-                return _status;
+                return status;
             }
 
             public void OnCompleted(Action continuation)

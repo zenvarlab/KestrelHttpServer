@@ -51,7 +51,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             _rawSocketInput = new SocketInput(Memory, ThreadPool);
             // _rawSocketOutput = new SocketOutput(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool, WriteReqPool);
-            _rawSocketOutput = new SocketOutput2(Thread, _socket, Memory, this, ConnectionId, Log, ThreadPool);
+            _rawSocketOutput = new SocketOutput2(Thread, _socket, Memory, this, Log, ThreadPool);
         }
 
         // Internal for testing

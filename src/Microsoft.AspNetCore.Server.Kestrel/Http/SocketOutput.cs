@@ -568,7 +568,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     _writeReq.Init(Self._thread.Loop);
                 }
 
-                _writeReq.Write(Self._socket, _lockedStart, _lockedEnd, _bufferCount, (_writeReq, status, state) =>
+                _writeReq.Write(Self._socket, _lockedStart, _lockedEnd, _bufferCount, (_, status, state) =>
                 {
                     var writeContext = (WriteContext)state;
                     writeContext.PoolWriteReq(writeContext._writeReq);
@@ -576,7 +576,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     writeContext.ScheduleReturnFullyWrittenBlocks();
                     writeContext.WriteStatus = status;
                     Exception error;
-                    _writeReq.Libuv.Check(status, out error);
+                    writeContext._writeReq.Libuv.Check(status, out error);
                     writeContext.WriteError = error;
                     writeContext.DoShutdownIfNeeded();
                 }, this);
