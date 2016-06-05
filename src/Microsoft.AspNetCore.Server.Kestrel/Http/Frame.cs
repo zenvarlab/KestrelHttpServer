@@ -63,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private HttpVersionType _httpVersion;
 
-        private string ServerPathBase => ServiceContext.ServerAddress.PathBase;
+        private string ServerPathBase => ConnectionContext.ServerAddress.PathBase;
 
         public IConnectionContext ConnectionContext { get; }
 

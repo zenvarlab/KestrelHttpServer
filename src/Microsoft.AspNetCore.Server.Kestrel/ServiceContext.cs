@@ -19,7 +19,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         {
             AppLifetime = context.AppLifetime;
             Log = context.Log;
-            ServerAddress = context.ServerAddress;
             ThreadPool = context.ThreadPool;
             Memory = context.Memory;
             FrameFactory = context.FrameFactory;
@@ -27,7 +26,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             DateHeaderValueManager = context.DateHeaderValueManager;
             ServerOptions = context.ServerOptions;
         }
-        public ServerAddress ServerAddress { get; set; }
 
         public IApplicationLifetime AppLifetime { get; set; }
 

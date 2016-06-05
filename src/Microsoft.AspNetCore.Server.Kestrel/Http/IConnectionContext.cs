@@ -11,6 +11,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
     public interface IConnectionContext
     {
+        ServerAddress ServerAddress { get; set; }
+
         IConnectionControl ConnectionControl { get; set; }
 
         IPEndPoint RemoteEndPoint { get; set; }

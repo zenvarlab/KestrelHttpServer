@@ -29,6 +29,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             Log = listenerContext.Log;
         }
 
+        public ServerAddress ServerAddress { get; set; }
+
         public LibuvThread LibuvThread { get; set; }
 
         public LibuvConnectionManager ConnectionManager { get; set; }
