@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
@@ -22,6 +23,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             ThreadPool = context.ThreadPool;
             Memory = context.Memory;
             FrameFactory = context.FrameFactory;
+            InitializeConnection = context.InitializeConnection;
             DateHeaderValueManager = context.DateHeaderValueManager;
             ServerOptions = context.ServerOptions;
         }
@@ -36,6 +38,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         public MemoryPool Memory { get; set; }
 
         public Func<IConnectionContext, ServiceContext, Frame> FrameFactory { get; set; }
+
+        public Func<IConnectionContext, ServiceContext, Task> InitializeConnection { get; set; }
 
         public DateHeaderValueManager DateHeaderValueManager { get; set; }
 

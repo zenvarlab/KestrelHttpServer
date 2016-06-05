@@ -17,9 +17,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         IPEndPoint LocalEndPoint { get; set; }
 
-        MemoryPoolChannel InputChannel { get; set; }
+        MemoryPoolChannel FrameInputChannel { get; set; }
 
-        MemoryPoolChannel OutputChannel { get; set; }
+        MemoryPoolChannel FrameOutputChannel { get; set; }
+
+        // For connection filters
+        MemoryPoolChannel ConnectionInputChannel { get; set; }
+
+        MemoryPoolChannel ConnectionOutputChannel { get; set; }
 
         string ConnectionId { get; set; }
 

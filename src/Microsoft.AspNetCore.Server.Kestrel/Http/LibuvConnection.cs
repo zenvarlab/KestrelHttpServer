@@ -22,8 +22,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private readonly UvStreamHandle _socket;
         private Frame _frame;
 
-        private readonly LibuvOutput _output;
-        private readonly LibuvInput _input;
+        private LibuvOutput _output;
+        private LibuvInput _input;
 
         private readonly object _stateLock = new object();
         private ConnectionState _connectionState;
@@ -36,9 +36,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ConnectionControl = this;
 
             ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
-
-            _input = new LibuvInput(LibuvThread, socket, InputChannel, this, Log, ThreadPool);
-            _output = new LibuvOutput(LibuvThread, socket, OutputChannel, this, Log, ThreadPool);
         }
 
         // Internal for testing
@@ -46,9 +43,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
         }
 
-        public void Start()
+        public async void Start()
         {
             Log.ConnectionStart(ConnectionId);
+
+            try
+            {
+                await InitializeConnection(this, this);
+            }
+            catch
+            {
+                ConnectionControl.End(ProduceEndType.SocketDisconnect);
+                return;
+            }
+
+            _input = new LibuvInput(LibuvThread, _socket, ConnectionInputChannel, this, Log, ThreadPool);
+            _output = new LibuvOutput(LibuvThread, _socket, ConnectionOutputChannel, this, Log, ThreadPool);
 
             _input.Start();
             _output.Start();
@@ -87,7 +97,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         break;
                     case ConnectionState.Open:
                         _frame.Stop();
-                        InputChannel.CompleteAwaiting();
+                        ConnectionInputChannel.CompleteAwaiting();
                         break;
                 }
 
@@ -121,7 +131,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         // Called on Libuv thread
         public virtual void OnSocketClosed()
         {
-            InputChannel.Dispose();
+            ConnectionInputChannel.Dispose();
 
             lock (_stateLock)
             {
@@ -165,7 +175,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         _connectionState = ConnectionState.Disconnecting;
 
                         Log.ConnectionDisconnect(ConnectionId);
-                        _output.Stop();
+                        _output?.Stop();
                         break;
                     }
             }

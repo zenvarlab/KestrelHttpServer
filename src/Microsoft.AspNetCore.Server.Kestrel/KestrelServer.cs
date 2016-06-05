@@ -6,10 +6,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Filter;
 using Microsoft.AspNetCore.Server.Kestrel.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Networking;
@@ -75,6 +77,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     {
                         return new Frame<TContext>(application, connectionContext, serviceCtx);
                     },
+                    InitializeConnection = InitializeConnection,
                     AppLifetime = _applicationLifetime,
                     Log = trace,
                     ThreadPool = threadPool,
@@ -191,6 +194,50 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             {
                 Dispose();
                 throw;
+            }
+        }
+
+        private static async Task InitializeConnection(IConnectionContext connectionContext, ServiceContext serviceContext)
+        {
+            var inputChannel = new MemoryPoolChannel(serviceContext.Memory, serviceContext.ThreadPool);
+            var outputChannel = new MemoryPoolChannel(serviceContext.Memory, serviceContext.ThreadPool);
+
+            connectionContext.FrameInputChannel = inputChannel;
+            connectionContext.FrameOutputChannel = outputChannel;
+
+            connectionContext.ConnectionInputChannel = inputChannel;
+            connectionContext.ConnectionOutputChannel = outputChannel;
+
+            if (serviceContext.ServerOptions.ConnectionFilter == null)
+            {
+                return;
+            }
+
+            var stream = new MemoryPoolChannelStream(inputChannel, outputChannel);
+
+            var connectionFilterContext = new ConnectionFilterContext
+            {
+                Connection = stream,
+                Address = serviceContext.ServerAddress
+            };
+
+            await serviceContext.ServerOptions.ConnectionFilter.OnConnectionAsync(connectionFilterContext);
+
+            connectionContext.PrepareRequest = connectionFilterContext.PrepareRequest;
+
+            if (connectionFilterContext.Connection != stream)
+            {
+                var streamConnection = new StreamConnection(
+                    connectionContext.ConnectionId,
+                    connectionFilterContext.Connection,
+                    serviceContext.Memory,
+                    serviceContext.Log,
+                    serviceContext.ThreadPool);
+
+                connectionContext.FrameOutputChannel = streamConnection.InputChannel;
+                connectionContext.FrameInputChannel = streamConnection.OutputChannel;
+
+                streamConnection.Start();
             }
         }
 

@@ -441,13 +441,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public void Flush()
         {
             ProduceStartAndFireOnStarting().GetAwaiter().GetResult();
-            ConnectionContext.OutputChannel.WriteAsync(_emptyData);
+            ConnectionContext.FrameOutputChannel.WriteAsync(_emptyData);
         }
 
         public async Task FlushAsync(CancellationToken cancellationToken)
         {
             await ProduceStartAndFireOnStarting();
-            await ConnectionContext.OutputChannel.WriteAsync(_emptyData); //, cancellationToken: cancellationToken);
+            await ConnectionContext.FrameOutputChannel.WriteAsync(_emptyData); //, cancellationToken: cancellationToken);
         }
 
         public void Write(ArraySegment<byte> data)
@@ -464,7 +464,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                ConnectionContext.OutputChannel.WriteAsync(data).GetAwaiter().GetResult();
+                ConnectionContext.FrameOutputChannel.WriteAsync(data).GetAwaiter().GetResult();
             }
         }
 
@@ -485,7 +485,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                return ConnectionContext.OutputChannel.WriteAsync(data); //cancellationToken: cancellationToken);
+                return ConnectionContext.FrameOutputChannel.WriteAsync(data); //cancellationToken: cancellationToken);
             }
         }
 
@@ -503,13 +503,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                await ConnectionContext.OutputChannel.WriteAsync(data); //cancellationToken: cancellationToken);
+                await ConnectionContext.FrameOutputChannel.WriteAsync(data); //cancellationToken: cancellationToken);
             }
         }
 
         private void WriteChunked(ArraySegment<byte> data)
         {
-            var end = ConnectionContext.OutputChannel.BeginWrite();
+            var end = ConnectionContext.FrameOutputChannel.BeginWrite();
 
             ChunkWriter.WriteBeginChunkBytes(ref end, data.Count);
 
@@ -518,12 +518,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ChunkWriter.WriteEndChunkBytes(ref end);
 
             // REVIEW: Should we block? or just fire and forget?
-            ConnectionContext.OutputChannel.EndWrite(end).GetAwaiter().GetResult();
+            ConnectionContext.FrameOutputChannel.EndWrite(end).GetAwaiter().GetResult();
         }
 
         private Task WriteChunkedAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
         {
-            var end = ConnectionContext.OutputChannel.BeginWrite();
+            var end = ConnectionContext.FrameOutputChannel.BeginWrite();
 
             ChunkWriter.WriteBeginChunkBytes(ref end, data.Count);
 
@@ -531,12 +531,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             ChunkWriter.WriteEndChunkBytes(ref end);
 
-            return ConnectionContext.OutputChannel.EndWrite(end);
+            return ConnectionContext.FrameOutputChannel.EndWrite(end);
         }
 
         private Task WriteChunkedResponseSuffix()
         {
-            return ConnectionContext.OutputChannel.WriteAsync(_endChunkedResponseBytes);
+            return ConnectionContext.FrameOutputChannel.WriteAsync(_endChunkedResponseBytes);
         }
 
         private static ArraySegment<byte> CreateAsciiByteArraySegment(string text)
@@ -558,7 +558,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
             {
 
-                ConnectionContext.OutputChannel.WriteAsync(_continueBytes).GetAwaiter().GetResult();
+                ConnectionContext.FrameOutputChannel.WriteAsync(_continueBytes).GetAwaiter().GetResult();
             }
         }
 
@@ -680,7 +680,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ProduceStart(appCompleted: true);
 
             // Force flush
-            await ConnectionContext.OutputChannel.WriteAsync(_emptyData);
+            await ConnectionContext.FrameOutputChannel.WriteAsync(_emptyData);
 
             await WriteSuffix();
         }
@@ -721,7 +721,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             var hasConnection = responseHeaders.HasConnection;
 
-            var end = ConnectionContext.OutputChannel.BeginWrite();
+            var end = ConnectionContext.FrameOutputChannel.BeginWrite();
             if (_keepAlive && hasConnection)
             {
                 foreach (var connectionValue in responseHeaders.HeaderConnection)
@@ -793,7 +793,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             responseHeaders.CopyTo(ref end);
             end.CopyFrom(_bytesEndHeaders, 0, _bytesEndHeaders.Length);
 
-            ConnectionContext.OutputChannel.EndWrite(end).GetAwaiter().GetResult();
+            ConnectionContext.FrameOutputChannel.EndWrite(end).GetAwaiter().GetResult();
         }
 
         protected RequestLineStatus TakeStartLine(MemoryPoolChannel input)
