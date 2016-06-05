@@ -100,20 +100,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             } while (true);
         }
 
-        public MemoryPoolIterator ReadToEnd()
-        {
-            var block = _block;
-            var prev = block;
-
-            while (block != null)
-            {
-                prev = block;
-                block = block.Next;
-            }
-
-            return new MemoryPoolIterator(prev, prev.End);
-        }
-
         public void Skip(int bytesToSkip)
         {
             if (_block == null)
