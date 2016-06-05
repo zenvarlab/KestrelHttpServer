@@ -218,7 +218,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             var connectionFilterContext = new ConnectionFilterContext
             {
                 Connection = stream,
-                Address = serviceContext.ServerAddress
+                Address = connectionContext.ServerAddress
             };
 
             await serviceContext.ServerOptions.ConnectionFilter.OnConnectionAsync(connectionFilterContext);
