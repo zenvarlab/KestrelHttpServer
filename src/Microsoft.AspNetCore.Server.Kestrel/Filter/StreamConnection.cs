@@ -18,17 +18,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
 
         public StreamConnection(
             string connectionId,
-            Stream filteredStream,
-            MemoryPool stream,
+            Stream stream,
+            MemoryPool memory,
             IKestrelTrace logger,
             IThreadPool threadPool)
         {
-            InputChannel = new MemoryPoolChannel(stream, threadPool);
-            OutputChannel = new MemoryPoolChannel(stream, threadPool);
+            InputChannel = new MemoryPoolChannel(memory, threadPool);
+            OutputChannel = new MemoryPoolChannel(memory, threadPool);
 
             _connectionId = connectionId;
             _log = logger;
-            _stream = filteredStream;
+            _stream = stream;
         }
 
         public MemoryPoolChannel InputChannel { get; private set; }
