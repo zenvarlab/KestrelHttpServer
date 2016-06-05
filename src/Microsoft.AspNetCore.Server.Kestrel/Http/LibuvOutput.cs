@@ -90,14 +90,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     await LibuvThread;
 
-                    // Aborted the awaiter
-                    var shutdownAwaitable = new LibuvAwaitable<UvShutdownReq>();
-                    var shutdownReq = new UvShutdownReq(Log);
-                    shutdownReq.Init(LibuvThread.Loop);
-                    shutdownReq.Shutdown(Socket, LibuvAwaitable<UvShutdownReq>.Callback, shutdownAwaitable);
-                    int status = await shutdownAwaitable;
+                    try
+                    {
+                        if (Socket.IsClosed)
+                        {
+                            return;
+                        }
 
-                    Log.ConnectionWroteFin(Connection.ConnectionId, status);
+                        var shutdownAwaitable = new LibuvAwaitable<UvShutdownReq>();
+                        using (var shutdownReq = new UvShutdownReq(Log))
+                        {
+                            shutdownReq.Init(LibuvThread.Loop);
+                            shutdownReq.Shutdown(Socket, LibuvAwaitable<UvShutdownReq>.Callback, shutdownAwaitable);
+                            int status = await shutdownAwaitable;
+
+                            Log.ConnectionWroteFin(Connection.ConnectionId, status);
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+                        // This fails?
+                    }
                 }
                 finally
                 {
