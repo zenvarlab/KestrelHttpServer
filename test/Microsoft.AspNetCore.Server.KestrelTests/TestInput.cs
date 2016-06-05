@@ -18,29 +18,30 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             var trace = new KestrelTrace(new TestKestrelTrace());
             var ltp = new LoggingThreadPool(trace);
-            var context = new Frame<object>(null, new LibuvConnectionContext() { ServerAddress = new ServerAddress() })
+            var connectionContext = new LibuvConnectionContext() { ServerAddress = new ServerAddress() };
+            var context = new Frame<object>(application: null, connectionContext: connectionContext, serviceContext: connectionContext)
             {
-                DateHeaderValueManager = new DateHeaderValueManager(),
-                ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
-                ConnectionControl = this,
+                //DateHeaderValueManager = new DateHeaderValueManager(),
+                //ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
+                //ConnectionControl = this,
                 FrameControl = this
             };
             FrameContext = context;
 
             _memoryPool = new MemoryPool();
-            FrameContext.InputChannel = new MemoryPoolChannel(_memoryPool, ltp);
+            // FrameContext.InputChannel = new MemoryPoolChannel(_memoryPool, ltp);
         }
 
         public Frame FrameContext { get; set; }
 
         public void Add(string text, bool fin = false)
         {
-            var data = System.Text.Encoding.ASCII.GetBytes(text);
-            FrameContext.InputChannel.WriteAsync(data, 0, data.Length);
-            if (fin)
-            {
-                FrameContext.InputChannel.RemoteIntakeFin = true;
-            }
+            //var data = System.Text.Encoding.ASCII.GetBytes(text);
+            //FrameContext.InputChannel.WriteAsync(data, 0, data.Length);
+            //if (fin)
+            //{
+            //    FrameContext.InputChannel.RemoteIntakeFin = true;
+            //}
         }
 
         public void ProduceContinue()
@@ -90,7 +91,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         public void Dispose()
         {
-            FrameContext.InputChannel.Dispose();
+            // FrameContext.InputChannel.Dispose();
             _memoryPool.Dispose();
         }
     }

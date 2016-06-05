@@ -74,17 +74,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
 
             if (copyAsyncTask.IsFaulted)
             {
-                InputChannel.AbortAwaiting();
+                InputChannel.Cancel();
                 _log.LogError(0, copyAsyncTask.Exception, "FilteredStreamAdapter.CopyToAsync");
             }
             else if (copyAsyncTask.IsCanceled)
             {
-                InputChannel.AbortAwaiting();
+                InputChannel.Cancel();
                 _log.LogError("FilteredStreamAdapter.CopyToAsync canceled.");
             }
             else if (_aborted)
             {
-                InputChannel.AbortAwaiting();
+                InputChannel.Cancel();
             }
 
             try

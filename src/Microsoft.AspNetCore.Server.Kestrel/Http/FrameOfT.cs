@@ -13,9 +13,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     {
         private readonly IHttpApplication<TContext> _application;
 
-        public Frame(IHttpApplication<TContext> application,
-                     LibuvConnectionContext context)
-            : base(context)
+        public Frame(IHttpApplication<TContext> application, IConnectionContext connectionContext, ServiceContext serviceContext)
+            : base(connectionContext, serviceContext)
         {
             _application = application;
         }
@@ -32,15 +31,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 while (!_requestProcessingStopping)
                 {
-                    while (!_requestProcessingStopping && TakeStartLine(InputChannel) != RequestLineStatus.Done)
+                    while (!_requestProcessingStopping && TakeStartLine(ConnectionContext.InputChannel) != RequestLineStatus.Done)
                     {
-                        if (InputChannel.RemoteIntakeFin)
+                        if (ConnectionContext.InputChannel.RemoteIntakeFin)
                         {
                             // We need to attempt to consume start lines and headers even after
                             // SocketInput.RemoteIntakeFin is set to true to ensure we don't close a
                             // connection without giving the application a chance to respond to a request
                             // sent immediately before the a FIN from the client.
-                            var requestLineStatus = TakeStartLine(InputChannel);
+                            var requestLineStatus = TakeStartLine(ConnectionContext.InputChannel);
 
                             if (requestLineStatus == RequestLineStatus.Empty)
                             {
@@ -55,20 +54,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                             break;
                         }
 
-                        await InputChannel;
+                        await ConnectionContext.InputChannel;
                     }
 
                     InitializeHeaders();
 
-                    while (!_requestProcessingStopping && !TakeMessageHeaders(InputChannel, FrameRequestHeaders))
+                    while (!_requestProcessingStopping && !TakeMessageHeaders(ConnectionContext.InputChannel, FrameRequestHeaders))
                     {
-                        if (InputChannel.RemoteIntakeFin)
+                        if (ConnectionContext.InputChannel.RemoteIntakeFin)
                         {
                             // We need to attempt to consume start lines and headers even after
                             // SocketInput.RemoteIntakeFin is set to true to ensure we don't close a
                             // connection without giving the application a chance to respond to a request
                             // sent immediately before the a FIN from the client.
-                            if (!TakeMessageHeaders(InputChannel, FrameRequestHeaders))
+                            if (!TakeMessageHeaders(ConnectionContext.InputChannel, FrameRequestHeaders))
                             {
                                 RejectRequest($"Malformed request: invalid headers.");
                             }
@@ -76,7 +75,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                             break;
                         }
 
-                        await InputChannel;
+                        await ConnectionContext.InputChannel;
                     }
 
                     if (!_requestProcessingStopping)
@@ -92,7 +91,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         var context = _application.CreateContext(this);
                         try
                         {
-                            await ThreadPool;
+                            await ServiceContext.ThreadPool;
                             await _application.ProcessRequestAsync(context).ConfigureAwait(false);
                         }
                         catch (Exception ex)
@@ -148,7 +147,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             catch (Exception ex)
             {
-                Log.LogWarning(0, ex, "Connection processing ended abnormally");
+                ServiceContext.Log.LogWarning(0, ex, "Connection processing ended abnormally");
             }
             finally
             {
@@ -161,12 +160,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     // If _requestAborted is set, the connection has already been closed.
                     if (Volatile.Read(ref _requestAborted) == 0)
                     {
-                        ConnectionControl.End(ProduceEndType.SocketShutdown);
+                        ConnectionContext.ConnectionControl.End(ProduceEndType.SocketShutdown);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log.LogWarning(0, ex, "Connection shutdown abnormally");
+                    ServiceContext.Log.LogWarning(0, ex, "Connection shutdown abnormally");
                 }
             }
         }

@@ -7,7 +7,6 @@ using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
-using Microsoft.AspNetCore.Server.Kestrel.Exceptions;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
@@ -150,7 +149,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             public override ValueTask<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
-                return _context.InputChannel.ReadAsync(buffer.Array, buffer.Offset, buffer.Array == null ? 8192 : buffer.Count);
+                return _context.ConnectionContext.InputChannel.ReadAsync(buffer.Array, buffer.Offset, buffer.Array == null ? 8192 : buffer.Count);
             }
         }
 
@@ -169,7 +168,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             public override ValueTask<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
-                var input = _context.InputChannel;
+                var input = _context.ConnectionContext.InputChannel;
 
                 var inputLengthLimit = (int)Math.Min(_inputLength, int.MaxValue);
                 var limit = buffer.Array == null ? inputLengthLimit : Math.Min(buffer.Count, inputLengthLimit);
@@ -178,7 +177,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     return new ValueTask<int>(0);
                 }
 
-                var task = _context.InputChannel.ReadAsync(buffer.Array, buffer.Offset, limit);
+                var task = _context.ConnectionContext.InputChannel.ReadAsync(buffer.Array, buffer.Offset, limit);
 
                 if (task.IsCompleted)
                 {
@@ -232,7 +231,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             public override ValueTask<int> ReadAsyncImplementation(ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
-                return new ValueTask<int>(ReadStateMachineAsync(_context.InputChannel, buffer, cancellationToken));
+                return new ValueTask<int>(ReadStateMachineAsync(_context.ConnectionContext.InputChannel, buffer, cancellationToken));
             }
 
             private async Task<int> ReadStateMachineAsync(MemoryPoolChannel input, ArraySegment<byte> buffer, CancellationToken cancellationToken)

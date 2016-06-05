@@ -59,7 +59,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 block = _memory.Lease();
             }
 
-            // REVIEW: This needs to be inside the lock
+            // REVIEW: This should be in the lock
             if (_head == null)
             {
                 _head = block;
@@ -117,15 +117,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             lock (_sync)
             {
-                _tail = end.Block;
-                _tail.End = end.Index;
-
-                var length = new MemoryPoolIterator(_head).GetLength(end);
-
-                if (length > _threshold)
+                if (!end.IsDefault)
                 {
-                    _limitState = new LimitState();
-                    _limitState.Length = length;
+                    _tail = end.Block;
+                    _tail.End = end.Index;
+
+                    // REVIEW: This isn't that efficient, (we can do better)
+                    var length = new MemoryPoolIterator(_head).GetLength(end);
+
+                    if (length > _threshold)
+                    {
+                        _limitState = new LimitState();
+                        _limitState.Length = length;
+                    }
                 }
 
                 if (error != null)
@@ -237,7 +241,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             Complete();
         }
 
-        public void AbortAwaiting()
+        public void Cancel()
         {
             _awaitableError = new TaskCanceledException("The request was aborted");
 
@@ -304,7 +308,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public void Dispose()
         {
-            AbortAwaiting();
+            Cancel();
 
             // Return all blocks
             var block = _head;

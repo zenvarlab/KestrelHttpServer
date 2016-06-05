@@ -33,7 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public LibuvThread LibuvThread { get; }
 
-        public LibuvConnection Connection { get; private set; }
+        public LibuvConnection Connection { get; }
 
         public async void Start()
         {
@@ -111,7 +111,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         }
         public void Stop()
         {
-            OutputChannel.AbortAwaiting();
+            OutputChannel.Cancel();
         }
 
         private static void BytesBetween(MemoryPoolIterator start, MemoryPoolIterator end, out int bytes, out int buffers)

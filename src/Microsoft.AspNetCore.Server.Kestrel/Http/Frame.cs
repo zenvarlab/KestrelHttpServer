@@ -20,7 +20,7 @@ using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public abstract partial class Frame : LibuvConnectionContext, IFrameControl
+    public abstract partial class Frame : IFrameControl
     {
         private static readonly ArraySegment<byte> _endChunkedResponseBytes = CreateAsciiByteArraySegment("0\r\n\r\n");
         private static readonly ArraySegment<byte> _continueBytes = CreateAsciiByteArraySegment("HTTP/1.1 100 Continue\r\n\r\n");
@@ -63,12 +63,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private HttpVersionType _httpVersion;
 
-        private readonly string _pathBase;
+        private string ServerPathBase => ServiceContext.ServerAddress.PathBase;
 
-        public Frame(LibuvConnectionContext context)
-            : base(context)
+        public IConnectionContext ConnectionContext { get; }
+
+        public ServiceContext ServiceContext { get; }
+
+        public Frame(IConnectionContext connectionContext, ServiceContext serviceContext)
         {
-            _pathBase = context.ServerAddress.PathBase;
+            ConnectionContext = connectionContext;
+            ServiceContext = serviceContext;
 
             FrameControl = this;
             Reset();
@@ -285,14 +289,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             StatusCode = 200;
             ReasonPhrase = null;
 
-            RemoteIpAddress = RemoteEndPoint?.Address;
-            RemotePort = RemoteEndPoint?.Port ?? 0;
+            RemoteIpAddress = ConnectionContext.RemoteEndPoint?.Address;
+            RemotePort = ConnectionContext.RemoteEndPoint?.Port ?? 0;
 
-            LocalIpAddress = LocalEndPoint?.Address;
-            LocalPort = LocalEndPoint?.Port ?? 0;
-            ConnectionIdFeature = ConnectionId;
+            LocalIpAddress = ConnectionContext.LocalEndPoint?.Address;
+            LocalPort = ConnectionContext.LocalEndPoint?.Port ?? 0;
+            ConnectionIdFeature = ConnectionContext.ConnectionId;
 
-            PrepareRequest?.Invoke(this);
+            ConnectionContext.PrepareRequest?.Invoke(this);
 
             _manuallySetRequestAbortToken = null;
             _abortedCts = null;
@@ -335,11 +339,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 try
                 {
-                    ConnectionControl.End(ProduceEndType.SocketDisconnect);
+                    ConnectionContext.ConnectionControl.End(ProduceEndType.SocketDisconnect);
                 }
                 catch (Exception ex)
                 {
-                    Log.LogError(0, ex, "Abort");
+                    ServiceContext.Log.LogError(0, ex, "Abort");
                 }
 
                 try
@@ -348,7 +352,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 }
                 catch (Exception ex)
                 {
-                    Log.LogError(0, ex, "Abort");
+                    ServiceContext.Log.LogError(0, ex, "Abort");
                 }
                 _abortedCts = null;
             }
@@ -437,13 +441,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public void Flush()
         {
             ProduceStartAndFireOnStarting().GetAwaiter().GetResult();
-            OutputChannel.WriteAsync(_emptyData);
+            ConnectionContext.OutputChannel.WriteAsync(_emptyData);
         }
 
         public async Task FlushAsync(CancellationToken cancellationToken)
         {
             await ProduceStartAndFireOnStarting();
-            await OutputChannel.WriteAsync(_emptyData); //, cancellationToken: cancellationToken);
+            await ConnectionContext.OutputChannel.WriteAsync(_emptyData); //, cancellationToken: cancellationToken);
         }
 
         public void Write(ArraySegment<byte> data)
@@ -460,7 +464,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                OutputChannel.WriteAsync(data).GetAwaiter().GetResult();
+                ConnectionContext.OutputChannel.WriteAsync(data).GetAwaiter().GetResult();
             }
         }
 
@@ -481,7 +485,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                return OutputChannel.WriteAsync(data); //cancellationToken: cancellationToken);
+                return ConnectionContext.OutputChannel.WriteAsync(data); //cancellationToken: cancellationToken);
             }
         }
 
@@ -499,13 +503,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                await OutputChannel.WriteAsync(data); //cancellationToken: cancellationToken);
+                await ConnectionContext.OutputChannel.WriteAsync(data); //cancellationToken: cancellationToken);
             }
         }
 
         private void WriteChunked(ArraySegment<byte> data)
         {
-            var end = OutputChannel.BeginWrite();
+            var end = ConnectionContext.OutputChannel.BeginWrite();
 
             ChunkWriter.WriteBeginChunkBytes(ref end, data.Count);
 
@@ -514,12 +518,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ChunkWriter.WriteEndChunkBytes(ref end);
 
             // REVIEW: Should we block? or just fire and forget?
-            OutputChannel.EndWrite(end).GetAwaiter().GetResult();
+            ConnectionContext.OutputChannel.EndWrite(end).GetAwaiter().GetResult();
         }
 
         private Task WriteChunkedAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
         {
-            var end = OutputChannel.BeginWrite();
+            var end = ConnectionContext.OutputChannel.BeginWrite();
 
             ChunkWriter.WriteBeginChunkBytes(ref end, data.Count);
 
@@ -527,12 +531,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             ChunkWriter.WriteEndChunkBytes(ref end);
 
-            return OutputChannel.EndWrite(end);
+            return ConnectionContext.OutputChannel.EndWrite(end);
         }
 
         private Task WriteChunkedResponseSuffix()
         {
-            return OutputChannel.WriteAsync(_endChunkedResponseBytes);
+            return ConnectionContext.OutputChannel.WriteAsync(_endChunkedResponseBytes);
         }
 
         private static ArraySegment<byte> CreateAsciiByteArraySegment(string text)
@@ -554,7 +558,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
             {
 
-                OutputChannel.WriteAsync(_continueBytes).GetAwaiter().GetResult();
+                ConnectionContext.OutputChannel.WriteAsync(_continueBytes).GetAwaiter().GetResult();
             }
         }
 
@@ -652,12 +656,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 var responseHeaders = FrameResponseHeaders;
                 responseHeaders.Reset();
-                var dateHeaderValues = DateHeaderValueManager.GetDateHeaderValues();
+                var dateHeaderValues = ServiceContext.DateHeaderValueManager.GetDateHeaderValues();
 
                 responseHeaders.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
                 responseHeaders.SetRawContentLength("0", _bytesContentLengthZero);
 
-                if (ServerOptions.AddServerHeader)
+                if (ServiceContext.ServerOptions.AddServerHeader)
                 {
                     responseHeaders.SetRawServer(Constants.ServerName, _bytesServer);
                 }
@@ -676,7 +680,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ProduceStart(appCompleted: true);
 
             // Force flush
-            await OutputChannel.WriteAsync(_emptyData);
+            await ConnectionContext.OutputChannel.WriteAsync(_emptyData);
 
             await WriteSuffix();
         }
@@ -692,7 +696,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (_keepAlive)
             {
-                ConnectionControl.End(ProduceEndType.ConnectionKeepAlive);
+                ConnectionContext.ConnectionControl.End(ProduceEndType.ConnectionKeepAlive);
             }
 
             return TaskUtilities.CompletedTask;
@@ -704,7 +708,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (_keepAlive)
             {
-                ConnectionControl.End(ProduceEndType.ConnectionKeepAlive);
+                ConnectionContext.ConnectionControl.End(ProduceEndType.ConnectionKeepAlive);
             }
         }
 
@@ -717,7 +721,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             var hasConnection = responseHeaders.HasConnection;
 
-            var end = OutputChannel.BeginWrite();
+            var end = ConnectionContext.OutputChannel.BeginWrite();
             if (_keepAlive && hasConnection)
             {
                 foreach (var connectionValue in responseHeaders.HeaderConnection)
@@ -773,14 +777,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 responseHeaders.SetRawConnection("keep-alive", _bytesConnectionKeepAlive);
             }
 
-            if (ServerOptions.AddServerHeader && !responseHeaders.HasServer)
+            if (ServiceContext.ServerOptions.AddServerHeader && !responseHeaders.HasServer)
             {
                 responseHeaders.SetRawServer(Constants.ServerName, _bytesServer);
             }
 
             if (!responseHeaders.HasDate)
             {
-                var dateHeaderValues = DateHeaderValueManager.GetDateHeaderValues();
+                var dateHeaderValues = ServiceContext.DateHeaderValueManager.GetDateHeaderValues();
                 responseHeaders.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
             }
 
@@ -789,7 +793,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             responseHeaders.CopyTo(ref end);
             end.CopyFrom(_bytesEndHeaders, 0, _bytesEndHeaders.Length);
 
-            OutputChannel.EndWrite(end).GetAwaiter().GetResult();
+            ConnectionContext.OutputChannel.EndWrite(end).GetAwaiter().GetResult();
         }
 
         protected RequestLineStatus TakeStartLine(MemoryPoolChannel input)
@@ -930,12 +934,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 bool caseMatches;
 
-                if (!string.IsNullOrEmpty(_pathBase) &&
-                    (requestUrlPath.Length == _pathBase.Length || (requestUrlPath.Length > _pathBase.Length && requestUrlPath[_pathBase.Length] == '/')) &&
+                if (!string.IsNullOrEmpty(ServerPathBase) &&
+                    (requestUrlPath.Length == ServerPathBase.Length || (requestUrlPath.Length > ServerPathBase.Length && requestUrlPath[ServerPathBase.Length] == '/')) &&
                     RequestUrlStartsWithPathBase(requestUrlPath, out caseMatches))
                 {
-                    PathBase = caseMatches ? _pathBase : requestUrlPath.Substring(0, _pathBase.Length);
-                    Path = requestUrlPath.Substring(_pathBase.Length);
+                    PathBase = caseMatches ? ServerPathBase : requestUrlPath.Substring(0, ServerPathBase.Length);
+                    Path = requestUrlPath.Substring(ServerPathBase.Length);
                 }
                 else
                 {
@@ -954,11 +958,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             caseMatches = true;
 
-            for (var i = 0; i < _pathBase.Length; i++)
+            for (var i = 0; i < ServerPathBase.Length; i++)
             {
-                if (requestUrl[i] != _pathBase[i])
+                if (requestUrl[i] != ServerPathBase[i])
                 {
-                    if (char.ToLowerInvariant(requestUrl[i]) == char.ToLowerInvariant(_pathBase[i]))
+                    if (char.ToLowerInvariant(requestUrl[i]) == char.ToLowerInvariant(ServerPathBase[i]))
                     {
                         caseMatches = false;
                     }
@@ -1123,7 +1127,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _requestProcessingStopping = true;
             _requestRejected = true;
             var ex = new BadHttpRequestException(message);
-            Log.ConnectionBadRequest(ConnectionId, ex);
+            ServiceContext.Log.ConnectionBadRequest(ConnectionContext.ConnectionId, ex);
             throw ex;
         }
 
@@ -1142,7 +1146,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 _applicationException = new AggregateException(_applicationException, ex);
             }
 
-            Log.ApplicationError(ConnectionId, ex);
+            ServiceContext.Log.ApplicationError(ConnectionContext.ConnectionId, ex);
         }
 
         private enum HttpVersionType

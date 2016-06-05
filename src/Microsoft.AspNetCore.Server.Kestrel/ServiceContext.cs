@@ -18,12 +18,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         {
             AppLifetime = context.AppLifetime;
             Log = context.Log;
+            ServerAddress = context.ServerAddress;
             ThreadPool = context.ThreadPool;
             Memory = context.Memory;
             FrameFactory = context.FrameFactory;
             DateHeaderValueManager = context.DateHeaderValueManager;
             ServerOptions = context.ServerOptions;
         }
+        public ServerAddress ServerAddress { get; set; }
 
         public IApplicationLifetime AppLifetime { get; set; }
 
@@ -33,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public MemoryPool Memory { get; set; }
 
-        public Func<LibuvConnectionContext, Frame> FrameFactory { get; set; }
+        public Func<IConnectionContext, ServiceContext, Frame> FrameFactory { get; set; }
 
         public DateHeaderValueManager DateHeaderValueManager { get; set; }
 

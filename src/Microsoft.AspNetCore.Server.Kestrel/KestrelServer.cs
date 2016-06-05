@@ -71,9 +71,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 var threadPool = new LoggingThreadPool(trace);
                 var serviceContext = new ServiceContext
                 {
-                    FrameFactory = context =>
+                    FrameFactory = (connectionContext, serviceCtx) =>
                     {
-                        return new Frame<TContext>(application, context);
+                        return new Frame<TContext>(application, connectionContext, serviceCtx);
                     },
                     AppLifetime = _applicationLifetime,
                     Log = trace,

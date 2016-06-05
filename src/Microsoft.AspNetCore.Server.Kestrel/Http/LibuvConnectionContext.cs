@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class LibuvConnectionContext : LibuvListenerContext
+    public class LibuvConnectionContext : LibuvListenerContext, IConnectionContext
     {
         public LibuvConnectionContext()
         {

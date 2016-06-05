@@ -138,7 +138,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private Frame CreateFrame()
         {
-            return FrameFactory(this);
+            return FrameFactory(this, this);
         }
 
         void IConnectionControl.End(ProduceEndType endType)
