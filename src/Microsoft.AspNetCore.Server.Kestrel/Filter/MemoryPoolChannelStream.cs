@@ -10,16 +10,16 @@ using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Filter
 {
-    public class LibuvStream : Stream
+    public class MemoryPoolChannelStream : Stream
     {
         private readonly static Task<int> _initialCachedTask = Task.FromResult(0);
 
         private readonly MemoryPoolChannel _input;
-        private readonly ISocketOutput _output;
+        private readonly MemoryPoolChannel _output;
 
         private Task<int> _cachedTask = _initialCachedTask;
 
-        public LibuvStream(MemoryPoolChannel input, ISocketOutput output)
+        public MemoryPoolChannelStream(MemoryPoolChannel input, MemoryPoolChannel output)
         {
             _input = input;
             _output = output;
@@ -91,30 +91,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            ArraySegment<byte> segment;
-            if (buffer != null)
-            {
-                segment = new ArraySegment<byte>(buffer, offset, count);
-            }
-            else
-            {
-                segment = default(ArraySegment<byte>);
-            }
-            _output.Write(segment);
+            _output.WriteAsync(buffer, offset, count).GetAwaiter().GetResult();
         }
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken token)
         {
-            ArraySegment<byte> segment;
-            if (buffer != null)
-            {
-                segment = new ArraySegment<byte>(buffer, offset, count);
-            }
-            else
-            {
-                segment = default(ArraySegment<byte>);
-            }
-            return _output.WriteAsync(segment, cancellationToken: token);
+            // TODO: Handle cancellation
+            return _output.WriteAsync(buffer, offset, count);
         }
 
         public override void Flush()
