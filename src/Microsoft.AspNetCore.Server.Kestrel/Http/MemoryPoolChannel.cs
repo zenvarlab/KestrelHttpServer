@@ -27,7 +27,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private int _consumingState;
         private object _sync = new object();
         private readonly int _threshold;
-        private int _count;
         private LimitState _limitState;
         private readonly IThreadPool _threadPool;
 
@@ -59,18 +58,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 block = _memory.Lease();
             }
 
-            // REVIEW: This should be in the lock
-            if (_head == null)
+            lock (_sync)
             {
-                _head = block;
-            }
-            else if (block != _tail)
-            {
-                Volatile.Write(ref _tail.Next, block);
-                _tail = block;
-            }
+                // REVIEW: This should be in the lock
+                if (_head == null)
+                {
+                    _head = block;
+                }
+                else if (block != _tail)
+                {
+                    Volatile.Write(ref _tail.Next, block);
+                    _tail = block;
+                }
 
-            return new MemoryPoolIterator(block, block.End);
+                return new MemoryPoolIterator(block, block.End);
+            }
         }
 
         public MemoryPoolIterator End()
@@ -160,7 +162,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             if (!ReferenceEquals(awaitableState, _awaitableIsCompleted) &&
                 !ReferenceEquals(awaitableState, _awaitableIsNotCompleted))
             {
-                _threadPool.Run(awaitableState);
+                // _threadPool.Run(awaitableState);
+                awaitableState();
             }
         }
 

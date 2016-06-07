@@ -53,7 +53,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
 
                     try
                     {
-                        int bytesRead = await _stream.ReadAsync(block.Array, block.Data.Offset, block.Data.Count);
+                        int bytesRead = await _stream.ReadAsync(block.Array, block.End, block.Data.Offset + block.Data.Count - block.End);
 
                         if (bytesRead == 0)
                         {
@@ -78,7 +78,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             }
             finally
             {
-                InputChannel.IncomingFin();
+                OutputChannel.IncomingFin();
             }
         }
 
@@ -101,8 +101,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
                         {
                             var blockStart = block == start.Block ? start.Index : block.Data.Offset;
                             var blockEnd = block == end.Block ? end.Index : block.Data.Offset + block.Data.Count;
+                            var length = blockEnd - blockStart;
 
-                            await _stream.WriteAsync(block.Array, blockStart, blockEnd - blockStart);
+                            await _stream.WriteAsync(block.Array, blockStart, length);
 
                             if (block == end.Block)
                             {
@@ -125,7 +126,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             }
             catch (Exception ex)
             {
-
+                // TODO: Log
             }
         }
 

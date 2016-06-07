@@ -110,7 +110,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     }
                     catch (Exception ex)
                     {
-                        // This fails?
+                        // TODO: Log
                     }
                 }
                 finally
