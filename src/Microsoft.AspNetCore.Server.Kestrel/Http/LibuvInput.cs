@@ -105,7 +105,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (readCount == 0)
             {
-                InputChannel.RemoteIntakeFin = true;
+                InputChannel.Completed = true;
             }
             else
             {

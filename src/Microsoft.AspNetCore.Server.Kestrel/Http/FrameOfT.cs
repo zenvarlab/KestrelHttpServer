@@ -33,10 +33,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     while (!_requestProcessingStopping && TakeStartLine(ConnectionContext.FrameInputChannel) != RequestLineStatus.Done)
                     {
-                        if (ConnectionContext.FrameInputChannel.RemoteIntakeFin)
+                        if (ConnectionContext.FrameInputChannel.Completed)
                         {
                             // We need to attempt to consume start lines and headers even after
-                            // SocketInput.RemoteIntakeFin is set to true to ensure we don't close a
+                            // FrameInputChannel.Completed is set to true to ensure we don't close a
                             // connection without giving the application a chance to respond to a request
                             // sent immediately before the a FIN from the client.
                             var requestLineStatus = TakeStartLine(ConnectionContext.FrameInputChannel);
@@ -61,10 +61,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                     while (!_requestProcessingStopping && !TakeMessageHeaders(ConnectionContext.FrameInputChannel, FrameRequestHeaders))
                     {
-                        if (ConnectionContext.FrameInputChannel.RemoteIntakeFin)
+                        if (ConnectionContext.FrameInputChannel.Completed)
                         {
                             // We need to attempt to consume start lines and headers even after
-                            // SocketInput.RemoteIntakeFin is set to true to ensure we don't close a
+                            // FrameInputChannel.Completed is set to true to ensure we don't close a
                             // connection without giving the application a chance to respond to a request
                             // sent immediately before the a FIN from the client.
                             if (!TakeMessageHeaders(ConnectionContext.FrameInputChannel, FrameRequestHeaders))

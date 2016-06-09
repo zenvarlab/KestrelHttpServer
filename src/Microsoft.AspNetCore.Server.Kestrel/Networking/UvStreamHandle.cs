@@ -50,6 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Networking
             {
                 throw new InvalidOperationException("TODO: Listen may not be called more than once");
             }
+
             try
             {
                 _listenCallback = callback;

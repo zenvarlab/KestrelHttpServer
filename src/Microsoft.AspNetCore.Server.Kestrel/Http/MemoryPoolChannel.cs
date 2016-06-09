@@ -39,7 +39,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _threadPool = threadPool;
         }
 
-        public bool RemoteIntakeFin { get; set; }
+        public bool Completed { get; set; }
 
         public bool IsCompleted => ReferenceEquals(_awaitableState, _awaitableIsCompleted);
 
@@ -103,7 +103,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 else
                 {
                     // No more input
-                    RemoteIntakeFin = true;
+                    Completed = true;
                     Complete();
                     return TaskUtilities.CompletedTask;
                 }
@@ -214,7 +214,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 if (!examined.IsDefault &&
                     examined.IsEnd &&
-                    RemoteIntakeFin == false &&
+                    Completed == false &&
                     _awaitableError == null)
                 {
                     _manualResetEvent.Reset();

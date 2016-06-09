@@ -1,11 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
@@ -23,7 +18,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         MemoryPoolChannel FrameOutputChannel { get; set; }
 
-        // For connection filters
         MemoryPoolChannel ConnectionInputChannel { get; set; }
 
         MemoryPoolChannel ConnectionOutputChannel { get; set; }

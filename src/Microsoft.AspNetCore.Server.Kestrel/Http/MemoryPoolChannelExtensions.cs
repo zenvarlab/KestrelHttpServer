@@ -14,7 +14,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 await input;
 
-                var fin = input.RemoteIntakeFin;
+                var fin = input.Completed;
 
                 var begin = input.BeginRead();
                 var end = input.End();
@@ -58,7 +58,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             while (input.IsCompleted)
             {
-                var fin = input.RemoteIntakeFin;
+                var fin = input.Completed;
 
                 var begin = input.BeginRead();
                 int actual;
@@ -84,7 +84,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 await input;
 
-                var fin = input.RemoteIntakeFin;
+                var fin = input.Completed;
 
                 var begin = input.BeginRead();
                 int actual;

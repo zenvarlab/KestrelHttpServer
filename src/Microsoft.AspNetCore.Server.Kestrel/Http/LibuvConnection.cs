@@ -58,7 +58,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
 
             _input = new LibuvInput(LibuvThread, _socket, ConnectionInputChannel, this, Log, ThreadPool);
-            _output = new LibuvOutput(LibuvThread, _socket, ConnectionOutputChannel, this, Log, ThreadPool);
+            _output = new LibuvOutput(LibuvThread, _socket, ConnectionOutputChannel, this, Log, ThreadPool, WriteReqPool);
 
             _input.Start();
             _output.Start();

@@ -86,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
         {
             try
             {
-                while (!InputChannel.RemoteIntakeFin)
+                while (!InputChannel.Completed)
                 {
                     await InputChannel;
 
