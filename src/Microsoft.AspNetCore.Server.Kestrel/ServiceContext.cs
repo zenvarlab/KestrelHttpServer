@@ -37,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public Func<IConnectionContext, ServiceContext, Frame> FrameFactory { get; set; }
 
-        public Func<IConnectionContext, ServiceContext, Task> InitializeConnection { get; set; }
+        public Func<IConnectionContext, ServiceContext, Task<IDisposable>> InitializeConnection { get; set; }
 
         public DateHeaderValueManager DateHeaderValueManager { get; set; }
 

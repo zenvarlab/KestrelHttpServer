@@ -59,11 +59,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
             public async void Start()
             {
-                await _serviceContext.InitializeConnection(this, _serviceContext);
+                using (await _serviceContext.InitializeConnection(this, _serviceContext))
+                {
+                    var stream = new NetworkStream(_socket);
 
-                var stream = new NetworkStream(_socket);
-
-                Go(stream);
+                    Go(stream);
+                }
             }
 
             private async void Go(NetworkStream stream)

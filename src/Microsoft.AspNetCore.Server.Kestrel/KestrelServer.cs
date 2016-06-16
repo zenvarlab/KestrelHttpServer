@@ -211,7 +211,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
         }
 
-        private static async Task InitializeConnection(IConnectionContext connectionContext, ServiceContext serviceContext)
+        private static async Task<IDisposable> InitializeConnection(IConnectionContext connectionContext, ServiceContext serviceContext)
         {
             if (string.IsNullOrEmpty(connectionContext.ConnectionId))
             {
@@ -232,7 +232,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             if (serviceContext.ServerOptions.ConnectionFilter == null)
             {
                 frame.Start();
-                return;
+
+                return new Disposable(() =>
+                {
+                    inputChannel.Dispose();
+                    outputChannel.Dispose();
+                });
             }
 
             var stream = new MemoryPoolChannelStream(inputChannel, outputChannel);
@@ -247,6 +252,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
             frame.PrepareRequest = connectionFilterContext.PrepareRequest;
 
+            Action dispose = () =>
+            {
+                inputChannel.Dispose();
+                outputChannel.Dispose();
+            };
+
             if (connectionFilterContext.Connection != stream)
             {
                 var streamConnection = new StreamConnection(
@@ -260,9 +271,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 frame.InputChannel = streamConnection.OutputChannel;
 
                 streamConnection.Start();
-            }
 
+                dispose = () =>
+                {
+                    streamConnection.Dispose();
+
+                    inputChannel.Dispose();
+                    outputChannel.Dispose();
+                };
+            }
             frame.Start();
+            return new Disposable(dispose);
         }
 
         private static unsafe string GenerateConnectionId(long id)
