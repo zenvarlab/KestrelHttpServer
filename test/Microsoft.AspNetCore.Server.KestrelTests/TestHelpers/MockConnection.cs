@@ -22,10 +22,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
             }
         }
 
-        public override void OnSocketClosed()
-        {
-        }
-
         public CancellationTokenSource RequestAbortedSource { get; }
 
         public void Dispose()

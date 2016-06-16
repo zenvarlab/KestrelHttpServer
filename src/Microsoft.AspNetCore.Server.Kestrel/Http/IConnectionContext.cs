@@ -8,22 +8,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     {
         ServerAddress ServerAddress { get; set; }
 
-        IConnectionControl ConnectionControl { get; set; }
-
         IPEndPoint RemoteEndPoint { get; set; }
 
         IPEndPoint LocalEndPoint { get; set; }
 
-        MemoryPoolChannel FrameInputChannel { get; set; }
+        MemoryPoolChannel InputChannel { get; set; }
 
-        MemoryPoolChannel FrameOutputChannel { get; set; }
-
-        MemoryPoolChannel ConnectionInputChannel { get; set; }
-
-        MemoryPoolChannel ConnectionOutputChannel { get; set; }
+        MemoryPoolChannel OutputChannel { get; set; }
 
         string ConnectionId { get; set; }
-
-        Action<IFeatureCollection> PrepareRequest { get; set; }
     }
 }

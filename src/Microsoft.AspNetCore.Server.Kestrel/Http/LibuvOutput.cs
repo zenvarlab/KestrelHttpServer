@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public Queue<UvWriteReq> WriteReqPool { get; }
 
-        public async void Start()
+        public async Task Start()
         {
             // Reuse the awaiter
             var awaitable = new LibuvAwaitable<UvWriteReq>();
@@ -56,13 +56,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     // Switch to the UV thread
                     await LibuvThread;
 
+                    if (Socket.IsClosed)
+                    {
+                        break;
+                    }
+
                     var start = OutputChannel.BeginRead();
                     var end = OutputChannel.End();
 
                     int bytes;
                     int buffers;
                     BytesBetween(start, end, out bytes, out buffers);
-
 
                     var req = TakeWriteReq();
 
@@ -74,11 +78,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     }
                     catch (Exception ex)
                     {
-                        // Abort the connection for any failed write
-                        // Queued on threadpool so get it in as first op.
-                        Connection.Abort();
-
                         Log.ConnectionError(Connection.ConnectionId, ex);
+                        break;
                     }
                     finally
                     {
@@ -86,11 +87,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                         // Return the request to the pool
                         ReturnWriteRequest(req);
-                    }
-
-                    if (Socket.IsClosed)
-                    {
-                        break;
                     }
                 }
             }
@@ -124,8 +120,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             finally
             {
                 Socket.Dispose();
-                Connection.OnSocketClosed();
-                OutputChannel.Dispose();
+
+                // REVIEW: Who stops this?
+                // OutputChannel.Dispose();
 
                 Log.ConnectionStop(Connection.ConnectionId);
             }
@@ -158,11 +155,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 req.Dispose();
             }
-        }
-
-        public void Stop()
-        {
-            OutputChannel.Cancel();
         }
 
         private static void BytesBetween(MemoryPoolIterator start, MemoryPoolIterator end, out int bytes, out int buffers)

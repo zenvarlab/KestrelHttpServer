@@ -31,15 +31,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 while (!_requestProcessingStopping)
                 {
-                    while (!_requestProcessingStopping && TakeStartLine(ConnectionContext.FrameInputChannel) != RequestLineStatus.Done)
+                    while (!_requestProcessingStopping && TakeStartLine(InputChannel) != RequestLineStatus.Done)
                     {
-                        if (ConnectionContext.FrameInputChannel.Completed)
+                        if (InputChannel.Completed)
                         {
                             // We need to attempt to consume start lines and headers even after
                             // FrameInputChannel.Completed is set to true to ensure we don't close a
                             // connection without giving the application a chance to respond to a request
                             // sent immediately before the a FIN from the client.
-                            var requestLineStatus = TakeStartLine(ConnectionContext.FrameInputChannel);
+                            var requestLineStatus = TakeStartLine(InputChannel);
 
                             if (requestLineStatus == RequestLineStatus.Empty)
                             {
@@ -54,20 +54,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                             break;
                         }
 
-                        await ConnectionContext.FrameInputChannel;
+                        await InputChannel;
                     }
 
                     InitializeHeaders();
 
-                    while (!_requestProcessingStopping && !TakeMessageHeaders(ConnectionContext.FrameInputChannel, FrameRequestHeaders))
+                    while (!_requestProcessingStopping && !TakeMessageHeaders(InputChannel, FrameRequestHeaders))
                     {
-                        if (ConnectionContext.FrameInputChannel.Completed)
+                        if (InputChannel.Completed)
                         {
                             // We need to attempt to consume start lines and headers even after
                             // FrameInputChannel.Completed is set to true to ensure we don't close a
                             // connection without giving the application a chance to respond to a request
                             // sent immediately before the a FIN from the client.
-                            if (!TakeMessageHeaders(ConnectionContext.FrameInputChannel, FrameRequestHeaders))
+                            if (!TakeMessageHeaders(InputChannel, FrameRequestHeaders))
                             {
                                 RejectRequest($"Malformed request: invalid headers.");
                             }
@@ -75,7 +75,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                             break;
                         }
 
-                        await ConnectionContext.FrameInputChannel;
+                        await InputChannel;
                     }
 
                     if (!_requestProcessingStopping)
@@ -91,7 +91,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         var context = _application.CreateContext(this);
                         try
                         {
-                            await ServiceContext.ThreadPool;
                             await _application.ProcessRequestAsync(context).ConfigureAwait(false);
                         }
                         catch (Exception ex)
@@ -160,7 +159,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     // If _requestAborted is set, the connection has already been closed.
                     if (Volatile.Read(ref _requestAborted) == 0)
                     {
-                        ConnectionContext.ConnectionControl.End(ProduceEndType.SocketShutdown);
+                        OutputChannel.Cancel();
                     }
                 }
                 catch (Exception ex)

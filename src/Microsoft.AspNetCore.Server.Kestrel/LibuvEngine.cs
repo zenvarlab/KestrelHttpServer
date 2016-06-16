@@ -3,7 +3,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net;
+using System.Net.Sockets;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Networking;
 
@@ -66,7 +69,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     if (single)
                     {
                         var listener = usingPipes ?
-                            (LibuvListener) new PipeListener(this) :
+                            (LibuvListener)new PipeListener(this) :
                             new LibuvTcpListener(this);
                         listeners.Add(listener);
                         listener.StartAsync(address, thread).Wait();
@@ -74,7 +77,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     else if (first)
                     {
                         var listener = usingPipes
-                            ? (LibuvListenerPrimary) new PipeListenerPrimary(this)
+                            ? (LibuvListenerPrimary)new PipeListenerPrimary(this)
                             : new LibuvTcpListenerPrimary(this);
 
                         listeners.Add(listener);
@@ -83,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     else
                     {
                         var listener = usingPipes
-                            ? (LibuvListenerSecondary) new PipeListenerSecondary(this)
+                            ? (LibuvListenerSecondary)new PipeListenerSecondary(this)
                             : new LibuvTcpListenerSecondary(this);
                         listeners.Add(listener);
                         listener.StartAsync(pipeName, address, thread).Wait();
@@ -111,7 +114,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
             foreach (var listener in listeners)
             {
-                 disposeTasks.Add(listener.DisposeAsync());
+                disposeTasks.Add(listener.DisposeAsync());
             }
 
             if (!Task.WhenAll(disposeTasks).Wait(ServerOptions.ShutdownTimeout))

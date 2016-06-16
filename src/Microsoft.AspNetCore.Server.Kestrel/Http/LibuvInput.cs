@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Networking;
 
@@ -12,6 +13,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             (handle, suggestedsize, state) => AllocCallback(handle, suggestedsize, state);
 
         private MemoryPoolIterator _iterator;
+
+        private TaskCompletionSource<object> _tcs;
 
         public LibuvInput(
             LibuvThread libuvThread,
@@ -41,12 +44,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public LibuvConnection Connection { get; private set; }
 
-        public void Start()
+        public Task Start()
+        {
+            if (_tcs != null)
+            {
+                return _tcs.Task;
+            }
+            _tcs = new TaskCompletionSource<object>();
+            Resume();
+            return _tcs.Task;
+        }
+
+        private void Resume()
         {
             Socket.ReadStart(_allocCallback, _readCallback, this);
         }
 
-        public void Stop()
+        private void Stop()
         {
             Log.ConnectionPause(Connection.ConnectionId);
             Socket.ReadStop();
@@ -106,6 +120,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             if (readCount == 0)
             {
                 InputChannel.Completed = true;
+                _tcs.TrySetResult(null);
             }
             else
             {
@@ -117,7 +132,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (errorDone)
             {
-                Connection.Abort();
+                _tcs.TrySetException(error);
             }
             else
             {
@@ -132,7 +147,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     await LibuvThread;
 
                     // Resume pumping data from the socket
-                    Start();
+                    Resume();
                 }
 
             }

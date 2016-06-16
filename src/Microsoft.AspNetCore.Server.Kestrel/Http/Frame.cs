@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Exceptions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
+using Microsoft.AspNetCore.Http.Features;
 
 // ReSharper disable AccessToModifiedClosure
 
@@ -65,9 +66,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private string ServerPathBase => ConnectionContext.ServerAddress.PathBase;
 
+        public MemoryPoolChannel InputChannel { get; set; }
+
+        public MemoryPoolChannel OutputChannel { get; set; }
+
         public IConnectionContext ConnectionContext { get; }
 
         public ServiceContext ServiceContext { get; }
+
+        public Action<IFeatureCollection> PrepareRequest { get; set; }
 
         public Frame(IConnectionContext connectionContext, ServiceContext serviceContext)
         {
@@ -296,7 +303,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             LocalPort = ConnectionContext.LocalEndPoint?.Port ?? 0;
             ConnectionIdFeature = ConnectionContext.ConnectionId;
 
-            ConnectionContext.PrepareRequest?.Invoke(this);
+            PrepareRequest?.Invoke(this);
 
             _manuallySetRequestAbortToken = null;
             _abortedCts = null;
@@ -339,7 +346,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 try
                 {
-                    ConnectionContext.ConnectionControl.End(ProduceEndType.SocketDisconnect);
+                    OutputChannel.Cancel();
                 }
                 catch (Exception ex)
                 {
@@ -359,7 +366,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         }
 
         /// <summary>
-        /// Primary loop which consumes socket input, parses it for protocol framing, and invokes the
+        /// Primary loop which consumes ConnectionContext.FrameInput, parses it for protocol framing, and invokes the
         /// application delegate for as long as the socket is intended to remain open.
         /// The resulting Task from this loop is preserved in a field which is used when the server needs
         /// to drain and close all currently active connections.
@@ -441,13 +448,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public void Flush()
         {
             ProduceStartAndFireOnStarting().GetAwaiter().GetResult();
-            ConnectionContext.FrameOutputChannel.WriteAsync(_emptyData);
+            // REVIEW: Is this correct? Empty data will mark the stream as completed (in this new set of changes)
+            OutputChannel.WriteAsync(_emptyData);
         }
 
         public async Task FlushAsync(CancellationToken cancellationToken)
         {
             await ProduceStartAndFireOnStarting();
-            await ConnectionContext.FrameOutputChannel.WriteAsync(_emptyData); //, cancellationToken: cancellationToken);
+            // REVIEW: Is this correct? Empty data will mark the stream as completed (in this new set of changes)
+            await OutputChannel.WriteAsync(_emptyData); //, cancellationToken: cancellationToken);
         }
 
         public void Write(ArraySegment<byte> data)
@@ -464,7 +473,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                ConnectionContext.FrameOutputChannel.WriteAsync(data).GetAwaiter().GetResult();
+                OutputChannel.Write(data);
             }
         }
 
@@ -485,7 +494,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                return ConnectionContext.FrameOutputChannel.WriteAsync(data); //cancellationToken: cancellationToken);
+                return OutputChannel.WriteAsync(data); //cancellationToken: cancellationToken);
             }
         }
 
@@ -503,13 +512,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                await ConnectionContext.FrameOutputChannel.WriteAsync(data); //cancellationToken: cancellationToken);
+                await OutputChannel.WriteAsync(data); //cancellationToken: cancellationToken);
             }
         }
 
         private void WriteChunked(ArraySegment<byte> data)
         {
-            var end = ConnectionContext.FrameOutputChannel.BeginWrite();
+            var end = OutputChannel.BeginWrite();
 
             ChunkWriter.WriteBeginChunkBytes(ref end, data.Count);
 
@@ -518,12 +527,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ChunkWriter.WriteEndChunkBytes(ref end);
 
             // REVIEW: Should we block? or just fire and forget?
-            ConnectionContext.FrameOutputChannel.EndWrite(end).GetAwaiter().GetResult();
+            OutputChannel.EndWrite(end).GetAwaiter().GetResult();
         }
 
         private Task WriteChunkedAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
         {
-            var end = ConnectionContext.FrameOutputChannel.BeginWrite();
+            var end = OutputChannel.BeginWrite();
 
             ChunkWriter.WriteBeginChunkBytes(ref end, data.Count);
 
@@ -531,12 +540,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             ChunkWriter.WriteEndChunkBytes(ref end);
 
-            return ConnectionContext.FrameOutputChannel.EndWrite(end);
+            return OutputChannel.EndWrite(end);
         }
 
         private Task WriteChunkedResponseSuffix()
         {
-            return ConnectionContext.FrameOutputChannel.WriteAsync(_endChunkedResponseBytes);
+            return OutputChannel.WriteAsync(_endChunkedResponseBytes);
         }
 
         private static ArraySegment<byte> CreateAsciiByteArraySegment(string text)
@@ -558,7 +567,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
             {
 
-                ConnectionContext.FrameOutputChannel.WriteAsync(_continueBytes).GetAwaiter().GetResult();
+                OutputChannel.WriteAsync(_continueBytes).GetAwaiter().GetResult();
             }
         }
 
@@ -680,7 +689,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ProduceStart(appCompleted: true);
 
             // Force flush
-            await ConnectionContext.FrameOutputChannel.WriteAsync(_emptyData);
+            await OutputChannel.WriteAsync(_emptyData);
 
             await WriteSuffix();
         }
@@ -696,7 +705,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (_keepAlive)
             {
-                ConnectionContext.ConnectionControl.End(ProduceEndType.ConnectionKeepAlive);
+                ServiceContext.Log.ConnectionKeepAlive(ConnectionContext.ConnectionId);
             }
 
             return TaskUtilities.CompletedTask;
@@ -708,7 +717,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (_keepAlive)
             {
-                ConnectionContext.ConnectionControl.End(ProduceEndType.ConnectionKeepAlive);
+                ServiceContext.Log.ConnectionKeepAlive(ConnectionContext.ConnectionId);
             }
         }
 
@@ -721,7 +730,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             var hasConnection = responseHeaders.HasConnection;
 
-            var end = ConnectionContext.FrameOutputChannel.BeginWrite();
             if (_keepAlive && hasConnection)
             {
                 foreach (var connectionValue in responseHeaders.HeaderConnection)
@@ -788,12 +796,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 responseHeaders.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
             }
 
+            var end = OutputChannel.BeginWrite();
             end.CopyFrom(_bytesHttpVersion11);
             end.CopyFrom(statusBytes);
             responseHeaders.CopyTo(ref end);
             end.CopyFrom(_bytesEndHeaders, 0, _bytesEndHeaders.Length);
-
-            ConnectionContext.FrameOutputChannel.EndWrite(end).GetAwaiter().GetResult();
+            OutputChannel.EndWrite(end).GetAwaiter().GetResult();
         }
 
         protected RequestLineStatus TakeStartLine(MemoryPoolChannel input)

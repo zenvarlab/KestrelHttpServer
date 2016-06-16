@@ -60,7 +60,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             lock (_sync)
             {
-                // REVIEW: This should be in the lock
                 if (_head == null)
                 {
                     _head = block;
@@ -78,6 +77,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public MemoryPoolIterator End()
         {
             return new MemoryPoolIterator(_tail, _tail.End);
+        }
+
+        public void Write(byte[] buffer)
+        {
+            Write(buffer, 0, buffer.Length);
+        }
+
+        public void Write(ArraySegment<byte> buffer)
+        {
+            Write(buffer.Array, buffer.Offset, buffer.Count);
+        }
+
+        public void Write(byte[] buffer, int offset, int count)
+        {
+            // Writing is synchronous, it'll only block if there's enough back pressure 
+            // (the consumer isn't reading fast enough)
+            WriteAsync(buffer, offset, count).GetAwaiter().GetResult();
         }
 
         public Task WriteAsync(byte[] buffer)
@@ -162,8 +178,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             if (!ReferenceEquals(awaitableState, _awaitableIsCompleted) &&
                 !ReferenceEquals(awaitableState, _awaitableIsNotCompleted))
             {
-                // _threadPool.Run(awaitableState);
-                awaitableState();
+                _threadPool.Run(awaitableState);
             }
         }
 

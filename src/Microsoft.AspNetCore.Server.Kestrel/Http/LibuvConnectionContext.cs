@@ -25,8 +25,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ConnectionId = context.ConnectionId;
             FrameInputChannel = context.FrameInputChannel;
             FrameOutputChannel = context.FrameOutputChannel;
-            ConnectionInputChannel = context.ConnectionInputChannel;
-            ConnectionOutputChannel = context.ConnectionOutputChannel;
+            InputChannel = context.InputChannel;
+            OutputChannel = context.OutputChannel;
             PrepareRequest = context.PrepareRequest;
         }
 
@@ -40,9 +40,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public MemoryPoolChannel FrameOutputChannel { get; set; }
 
-        public MemoryPoolChannel ConnectionInputChannel { get; set; }
+        public MemoryPoolChannel InputChannel { get; set; }
 
-        public MemoryPoolChannel ConnectionOutputChannel { get; set; }
+        public MemoryPoolChannel OutputChannel { get; set; }
 
         public string ConnectionId { get; set; }
 

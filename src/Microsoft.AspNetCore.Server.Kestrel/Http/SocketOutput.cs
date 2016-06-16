@@ -631,7 +631,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 // to ensure the MemoryPool doesn't get disposed too soon.
                 Self.ReturnAllBlocks();
                 Self._socket.Dispose();
-                Self._connection.OnSocketClosed();
+                // Self._connection.OnSocketClosed();
                 Self._log.ConnectionStop(Self._connectionId);
                 CompleteWithContextLock();
             }
