@@ -61,12 +61,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
                         else
                         {
                             end.UpdateEnd(bytesRead);
-                            await OutputChannel.EndWrite(end);
+                            await OutputChannel.EndWriteAsync(end);
                         }
                     }
                     catch (Exception error)
                     {
-                        await OutputChannel.EndWrite(end, error);
+                        await OutputChannel.EndWriteAsync(end, error);
                     }
                 }
             }

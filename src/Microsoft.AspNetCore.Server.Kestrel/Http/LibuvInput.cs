@@ -127,7 +127,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 _iterator.UpdateEnd(readCount);
             }
 
-            var task = InputChannel.EndWrite(_iterator, error);
+            var task = InputChannel.EndWriteAsync(_iterator, error);
             _iterator = default(MemoryPoolIterator);
 
             if (errorDone)

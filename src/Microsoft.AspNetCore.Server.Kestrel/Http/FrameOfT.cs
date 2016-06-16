@@ -13,8 +13,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     {
         private readonly IHttpApplication<TContext> _application;
 
-        public Frame(IHttpApplication<TContext> application, IConnectionContext connectionContext, ServiceContext serviceContext)
-            : base(connectionContext, serviceContext)
+        public Frame(IHttpApplication<TContext> application, IConnectionInformation connectionInformation, ServiceContext serviceContext)
+            : base(connectionInformation, serviceContext)
         {
             _application = application;
         }
@@ -36,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         if (InputChannel.Completed)
                         {
                             // We need to attempt to consume start lines and headers even after
-                            // FrameInputChannel.Completed is set to true to ensure we don't close a
+                            // InputChannel.Completed is set to true to ensure we don't close a
                             // connection without giving the application a chance to respond to a request
                             // sent immediately before the a FIN from the client.
                             var requestLineStatus = TakeStartLine(InputChannel);

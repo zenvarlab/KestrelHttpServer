@@ -35,16 +35,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 LocalEndPoint = tcpHandle.GetSockIPEndPoint();
             }
 
-            using (await InitializeConnection(this, this))
-            {
-                var input = new LibuvInput(LibuvThread, _socket, InputChannel, this, Log, ThreadPool);
-                var output = new LibuvOutput(LibuvThread, _socket, OutputChannel, this, Log, ThreadPool, WriteReqPool);
+            var context = await StartConnectionAsync(this, this);
 
-                var inputTask = input.Start();
-                var outputTask = output.Start();
+            var input = new LibuvInput(LibuvThread, _socket, context.InputChannel, this, Log, ThreadPool);
+            var output = new LibuvOutput(LibuvThread, _socket, context.OutputChannel, this, Log, ThreadPool, WriteReqPool);
 
-                await Task.WhenAny(inputTask, outputTask);
-            }
+            var inputTask = input.Start();
+            var outputTask = output.Start();
+
+            await Task.WhenAny(inputTask, outputTask);
         }
 
         public Task StopAsync()

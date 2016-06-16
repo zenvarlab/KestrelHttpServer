@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Http;
 
@@ -12,6 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
     public class TcpListenerEngine : IDisposable
     {
         private ServiceContext _serviceContext;
+
         public void Initialize(ServiceContext serviceContext)
         {
             _serviceContext = serviceContext;
@@ -19,26 +21,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public IDisposable CreateServer(ServerAddress address)
         {
-            var listener = new TcpListener(IPAddress.Parse(address.Host), address.Port);
-            listener.Start();
+            var listener = new Listener(_serviceContext);
+            listener.Start(address);
 
-            Go(listener, address);
-
-            return new DisposableAction(listener.Stop);
-        }
-
-        private async void Go(TcpListener listener, ServerAddress address)
-        {
-            while (true)
-            {
-                var socket = await listener.AcceptSocketAsync();
-
-                var connection = new SocketConnection(socket, _serviceContext);
-                connection.ServerAddress = address;
-                connection.RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
-                connection.LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
-                connection.Start();
-            }
+            return listener;
         }
 
         public void Dispose()
@@ -46,128 +32,169 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         }
 
-        private class SocketConnection : IConnectionContext
+        private class Listener : IDisposable
+        {
+            private readonly ServiceContext _serviceContext;
+            private TcpListener _listener;
+            private CancellationTokenSource _cts = new CancellationTokenSource();
+
+            public Listener(ServiceContext serviceContext)
+            {
+                _serviceContext = serviceContext;
+            }
+
+            public async void Start(ServerAddress address)
+            {
+                _listener = new TcpListener(IPAddress.Parse(address.Host), address.Port);
+                _listener.Start();
+
+                while (true)
+                {
+                    try
+                    {
+                        var socket = await _listener.AcceptSocketAsync();
+
+                        var connection = new SocketConnection(socket, _serviceContext, _cts.Token);
+                        connection.ServerAddress = address;
+                        connection.RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
+                        connection.LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
+                        connection.Start();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // We're done
+                        break;
+                    }
+                }
+            }
+
+            public void Dispose()
+            {
+                _cts.Cancel();
+                _listener.Stop();
+            }
+        }
+
+        private class SocketConnection : IConnectionInformation
         {
             private readonly Socket _socket;
             private readonly ServiceContext _serviceContext;
+            private readonly CancellationToken _token;
 
-            public SocketConnection(Socket socket, ServiceContext serviceContext)
+            public SocketConnection(Socket socket, ServiceContext serviceContext, CancellationToken token)
             {
                 _socket = socket;
                 _serviceContext = serviceContext;
+                _token = token;
             }
 
             public async void Start()
             {
-                using (await _serviceContext.InitializeConnection(this, _serviceContext))
-                {
-                    var stream = new NetworkStream(_socket);
+                var connectionContext = await _serviceContext.StartConnectionAsync(this, _serviceContext);
 
-                    await Process(stream);
-                }
+                var stream = new NetworkStream(_socket);
+
+                await Process(connectionContext, stream);
             }
 
-            private async Task Process(NetworkStream stream)
+            private async Task Process(IConnectionContext connectionContext, NetworkStream stream)
             {
-                await Task.WhenAny(ProcessReads(stream), ProcessWrites(stream));
+                await Task.WhenAny(ProcessReads(connectionContext, stream), ProcessWrites(connectionContext, stream));
             }
 
-            private async Task ProcessReads(NetworkStream stream)
+            private async Task ProcessReads(IConnectionContext context, NetworkStream stream)
             {
                 while (true)
                 {
-                    var end = InputChannel.BeginWrite();
+                    var end = context.InputChannel.BeginWrite();
                     var block = end.Block;
 
                     try
                     {
-                        int bytesRead = await stream.ReadAsync(block.Array, block.End, block.Data.Offset + block.Data.Count - block.End);
+                        int bytesRead = await stream.ReadAsync(block.Array, block.End, block.Data.Offset + block.Data.Count - block.End, _token);
 
                         if (bytesRead == 0)
                         {
+                            context.InputChannel.Completed = true;
+                            await context.InputChannel.EndWriteAsync(end);
                             break;
                         }
                         else
                         {
                             end.UpdateEnd(bytesRead);
-                            await InputChannel.EndWrite(end);
+                            await context.InputChannel.EndWriteAsync(end);
                         }
                     }
                     catch (Exception error)
                     {
-                        await InputChannel.EndWrite(end, error);
+                        await context.InputChannel.EndWriteAsync(end, error);
                         break;
                     }
                 }
             }
 
-            private async Task ProcessWrites(NetworkStream stream)
+            private async Task ProcessWrites(IConnectionContext context, NetworkStream stream)
             {
-                while (!OutputChannel.Completed)
+                try
                 {
-                    await OutputChannel;
-
-                    var start = OutputChannel.BeginRead();
-                    var end = OutputChannel.End();
-
-                    try
+                    while (!context.OutputChannel.Completed)
                     {
-                        var block = start.Block;
+                        await context.OutputChannel;
 
-                        while (true)
+                        if (context.OutputChannel.Completed)
                         {
-                            var blockStart = block == start.Block ? start.Index : block.Data.Offset;
-                            var blockEnd = block == end.Block ? end.Index : block.Data.Offset + block.Data.Count;
-                            var length = blockEnd - blockStart;
+                            break;
+                        }
 
-                            await stream.WriteAsync(block.Array, blockStart, length);
+                        var start = context.OutputChannel.BeginRead();
+                        var end = context.OutputChannel.End();
 
-                            if (block == end.Block)
+                        try
+                        {
+                            var block = start.Block;
+
+                            while (true)
                             {
-                                break;
-                            }
+                                var blockStart = block == start.Block ? start.Index : block.Data.Offset;
+                                var blockEnd = block == end.Block ? end.Index : block.Data.Offset + block.Data.Count;
+                                var length = blockEnd - blockStart;
 
-                            block = block.Next;
+                                await stream.WriteAsync(block.Array, blockStart, length, _token);
+
+                                if (block == end.Block)
+                                {
+                                    break;
+                                }
+
+                                block = block.Next;
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // Handle
+                            break;
+                        }
+                        finally
+                        {
+                            context.OutputChannel.EndRead(end);
                         }
                     }
-                    catch (Exception)
-                    {
-                        // Handle
-                        break;
-                    }
-                    finally
-                    {
-                        OutputChannel.EndRead(end);
-                    }
                 }
+                catch (TaskCanceledException)
+                {
+                    // Aborted
+                }
+
+                _socket.Dispose();
             }
 
             public string ConnectionId { get; set; }
-
-            public MemoryPoolChannel InputChannel { get; set; }
-
-            public MemoryPoolChannel OutputChannel { get; set; }
 
             public IPEndPoint LocalEndPoint { get; set; }
 
             public IPEndPoint RemoteEndPoint { get; set; }
 
             public ServerAddress ServerAddress { get; set; }
-        }
-
-        private class DisposableAction : IDisposable
-        {
-            private readonly Action _action;
-
-            public DisposableAction(Action action)
-            {
-                _action = action;
-            }
-
-            public void Dispose()
-            {
-                _action();
-            }
         }
     }
 #endif

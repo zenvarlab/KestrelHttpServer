@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             ThreadPool = context.ThreadPool;
             Memory = context.Memory;
             FrameFactory = context.FrameFactory;
-            InitializeConnection = context.InitializeConnection;
+            StartConnectionAsync = context.StartConnectionAsync;
             DateHeaderValueManager = context.DateHeaderValueManager;
             ServerOptions = context.ServerOptions;
         }
@@ -35,9 +35,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public MemoryPool Memory { get; set; }
 
-        public Func<IConnectionContext, ServiceContext, Frame> FrameFactory { get; set; }
+        public Func<IConnectionInformation, ServiceContext, Frame> FrameFactory { get; set; }
 
-        public Func<IConnectionContext, ServiceContext, Task<IDisposable>> InitializeConnection { get; set; }
+        public Func<IConnectionInformation, ServiceContext, Task<IConnectionContext>> StartConnectionAsync { get; set; }
 
         public DateHeaderValueManager DateHeaderValueManager { get; set; }
 

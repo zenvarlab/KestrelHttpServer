@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var trace = new KestrelTrace(new TestKestrelTrace());
             var ltp = new LoggingThreadPool(trace);
             var connectionContext = new LibuvConnectionContext() { ServerAddress = new ServerAddress() };
-            var context = new Frame<object>(application: null, connectionContext: connectionContext, serviceContext: connectionContext)
+            var context = new Frame<object>(application: null, connectionInformation: connectionContext, serviceContext: connectionContext)
             {
                 //DateHeaderValueManager = new DateHeaderValueManager(),
                 //ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),

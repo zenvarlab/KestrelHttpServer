@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public class LibuvConnectionContext : LibuvListenerContext, IConnectionContext
+    public class LibuvConnectionContext : LibuvListenerContext, IConnectionInformation
     {
         public LibuvConnectionContext()
         {
@@ -19,33 +19,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public LibuvConnectionContext(LibuvConnectionContext context) : base(context)
         {
-            ConnectionControl = context.ConnectionControl;
             RemoteEndPoint = context.RemoteEndPoint;
             LocalEndPoint = context.LocalEndPoint;
             ConnectionId = context.ConnectionId;
-            FrameInputChannel = context.FrameInputChannel;
-            FrameOutputChannel = context.FrameOutputChannel;
-            InputChannel = context.InputChannel;
-            OutputChannel = context.OutputChannel;
-            PrepareRequest = context.PrepareRequest;
         }
-
-        public IConnectionControl ConnectionControl { get; set; }
-
+        
         public IPEndPoint RemoteEndPoint { get; set; }
 
         public IPEndPoint LocalEndPoint { get; set; }
 
-        public MemoryPoolChannel FrameInputChannel { get; set; }
-
-        public MemoryPoolChannel FrameOutputChannel { get; set; }
-
-        public MemoryPoolChannel InputChannel { get; set; }
-
-        public MemoryPoolChannel OutputChannel { get; set; }
-
         public string ConnectionId { get; set; }
-
-        public Action<IFeatureCollection> PrepareRequest { get; set; }
     }
 }

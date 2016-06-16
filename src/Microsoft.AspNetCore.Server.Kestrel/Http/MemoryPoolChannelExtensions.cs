@@ -40,7 +40,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         block = block.Next;
                     }
 
-                    await output.EndWrite(writeEnd);
+                    await output.EndWriteAsync(writeEnd);
                 }
                 finally
                 {

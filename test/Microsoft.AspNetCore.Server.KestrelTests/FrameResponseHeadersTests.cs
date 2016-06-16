@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 ServerOptions = serverOptions,
             };
 
-            var frame = new Frame<object>(application: null, connectionContext: connectionContext, serviceContext: connectionContext);
+            var frame = new Frame<object>(application: null, connectionInformation: connectionContext, serviceContext: connectionContext);
 
             frame.InitializeHeaders();
 

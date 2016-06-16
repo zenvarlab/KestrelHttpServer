@@ -1,6 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+#define TCPENGINE
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -87,7 +89,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     {
                         return new Frame<TContext>(application, connectionContext, serviceCtx);
                     },
-                    InitializeConnection = InitializeConnection,
+                    StartConnectionAsync = StartConnectionAsync,
                     AppLifetime = _applicationLifetime,
                     Log = trace,
                     ThreadPool = threadPool,
@@ -95,7 +97,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     DateHeaderValueManager = dateHeaderValueManager,
                     ServerOptions = Options
                 };
-#if TCPENGINE
+#if TCPENGINE && NET451
                 var engine = new TcpListenerEngine();
                 engine.Initialize(serviceContext);
 #else
@@ -212,14 +214,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
         }
 
-        private static async Task<IDisposable> InitializeConnection(IConnectionContext connectionContext, ServiceContext serviceContext)
+        private static async Task<IConnectionContext> StartConnectionAsync(IConnectionInformation connectionInformation, ServiceContext serviceContext)
         {
-            if (string.IsNullOrEmpty(connectionContext.ConnectionId))
+            if (string.IsNullOrEmpty(connectionInformation.ConnectionId))
             {
-                connectionContext.ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
+                connectionInformation.ConnectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
             }
 
-            var frame = serviceContext.FrameFactory(connectionContext, serviceContext);
+            var frame = serviceContext.FrameFactory(connectionInformation, serviceContext);
 
             var inputChannel = new MemoryPoolChannel(serviceContext.Memory, serviceContext.ThreadPool);
             var outputChannel = new MemoryPoolChannel(serviceContext.Memory, serviceContext.ThreadPool);
@@ -227,21 +229,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             frame.InputChannel = inputChannel;
             frame.OutputChannel = outputChannel;
 
-            connectionContext.InputChannel = inputChannel;
-            connectionContext.OutputChannel = outputChannel;
-
             if (serviceContext.ServerOptions.ConnectionFilter == null)
             {
-                frame.Start();
-
-                return new Disposable(() =>
-                {
-                    // Graceful shutdown
-                    frame.Stop();
-                    inputChannel.CompleteAwaiting();
-
-                    outputChannel.IncomingFin();
-                });
+                StartRequestProcessing(frame);
+                return new ConnectionContext(inputChannel, outputChannel);
             }
 
             var stream = new MemoryPoolChannelStream(inputChannel, outputChannel);
@@ -249,26 +240,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             var connectionFilterContext = new ConnectionFilterContext
             {
                 Connection = stream,
-                Address = connectionContext.ServerAddress
+                Address = connectionInformation.ServerAddress
             };
 
             await serviceContext.ServerOptions.ConnectionFilter.OnConnectionAsync(connectionFilterContext);
 
             frame.PrepareRequest = connectionFilterContext.PrepareRequest;
 
-            Action dispose = () =>
-            {
-                // Graceful shutdown
-                frame.Stop();
-                inputChannel.CompleteAwaiting();
-
-                outputChannel.IncomingFin();
-            };
-
             if (connectionFilterContext.Connection != stream)
             {
                 var streamConnection = new StreamConnection(
-                    connectionContext.ConnectionId,
+                    connectionInformation.ConnectionId,
                     connectionFilterContext.Connection,
                     serviceContext.Memory,
                     serviceContext.Log,
@@ -278,20 +260,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 frame.InputChannel = streamConnection.OutputChannel;
 
                 streamConnection.Start();
-
-                dispose = () =>
-                {
-                    streamConnection.Dispose();
-
-                    frame.Stop();
-                    inputChannel.CompleteAwaiting();
-
-                    outputChannel.IncomingFin();
-                };
             }
 
-            frame.Start();
-            return new Disposable(dispose);
+            StartRequestProcessing(frame);
+            return new ConnectionContext(inputChannel, outputChannel);
+        }
+
+        private static async void StartRequestProcessing(Frame frame)
+        {
+            await frame.StartAsync();
+
+            // Once the frame unwinds dispose the channels
+            frame.InputChannel.Dispose();
+            frame.OutputChannel.Dispose();
         }
 
         private static unsafe string GenerateConnectionId(long id)
@@ -331,6 +312,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 }
                 _disposables = null;
             }
+        }
+
+        private class ConnectionContext : IConnectionContext
+        {
+            public ConnectionContext(MemoryPoolChannel input, MemoryPoolChannel output)
+            {
+                InputChannel = input;
+                OutputChannel = output;
+            }
+
+            public MemoryPoolChannel InputChannel { get; private set; }
+
+            public MemoryPoolChannel OutputChannel { get; private set; }
         }
     }
 }

@@ -114,7 +114,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     var iterator = BeginWrite();
                     iterator.CopyFrom(buffer, offset, count);
-                    return EndWrite(iterator);
+                    return EndWriteAsync(iterator);
                 }
                 else
                 {
@@ -126,12 +126,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
         }
 
-        public Task EndWrite(MemoryPoolIterator end)
+        public Task EndWriteAsync(MemoryPoolIterator end)
         {
-            return EndWrite(end, error: null);
+            return EndWriteAsync(end, error: null);
         }
 
-        public Task EndWrite(MemoryPoolIterator end, Exception error)
+        public Task EndWriteAsync(MemoryPoolIterator end, Exception error)
         {
             lock (_sync)
             {

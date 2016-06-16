@@ -64,21 +64,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private HttpVersionType _httpVersion;
 
-        private string ServerPathBase => ConnectionContext.ServerAddress.PathBase;
+        private string ServerPathBase => ConnectionInformation.ServerAddress.PathBase;
 
         public MemoryPoolChannel InputChannel { get; set; }
 
         public MemoryPoolChannel OutputChannel { get; set; }
 
-        public IConnectionContext ConnectionContext { get; }
+        public IConnectionInformation ConnectionInformation { get; }
 
         public ServiceContext ServiceContext { get; }
 
         public Action<IFeatureCollection> PrepareRequest { get; set; }
 
-        public Frame(IConnectionContext connectionContext, ServiceContext serviceContext)
+        public Frame(IConnectionInformation connectionInformation, ServiceContext serviceContext)
         {
-            ConnectionContext = connectionContext;
+            ConnectionInformation = connectionInformation;
             ServiceContext = serviceContext;
 
             FrameControl = this;
@@ -296,12 +296,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             StatusCode = 200;
             ReasonPhrase = null;
 
-            RemoteIpAddress = ConnectionContext.RemoteEndPoint?.Address;
-            RemotePort = ConnectionContext.RemoteEndPoint?.Port ?? 0;
+            RemoteIpAddress = ConnectionInformation.RemoteEndPoint?.Address;
+            RemotePort = ConnectionInformation.RemoteEndPoint?.Port ?? 0;
 
-            LocalIpAddress = ConnectionContext.LocalEndPoint?.Address;
-            LocalPort = ConnectionContext.LocalEndPoint?.Port ?? 0;
-            ConnectionIdFeature = ConnectionContext.ConnectionId;
+            LocalIpAddress = ConnectionInformation.LocalEndPoint?.Address;
+            LocalPort = ConnectionInformation.LocalEndPoint?.Port ?? 0;
+            ConnectionIdFeature = ConnectionInformation.ConnectionId;
 
             PrepareRequest?.Invoke(this);
 
@@ -312,9 +312,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         /// <summary>
         /// Called once by Connection class to begin the RequestProcessingAsync loop.
         /// </summary>
-        public void Start()
+        public Task StartAsync()
         {
-            _requestProcessingTask = RequestProcessingAsync();
+            return _requestProcessingTask = RequestProcessingAsync();
         }
 
         /// <summary>
@@ -323,7 +323,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         /// Stop will be called on all active connections, and Task.WaitAll() will be called on every
         /// return value.
         /// </summary>
-        public Task Stop()
+        public Task StopAsync()
         {
             if (!_requestProcessingStopping)
             {
@@ -447,7 +447,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public void Flush()
         {
-            ProduceStartAndFireOnStarting().GetAwaiter().GetResult();
+            ProduceStartAndFireOnStarting();
             // REVIEW: Is this correct? Empty data will mark the stream as completed (in this new set of changes)
             OutputChannel.WriteAsync(_emptyData);
         }
@@ -461,7 +461,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public void Write(ArraySegment<byte> data)
         {
-            ProduceStartAndFireOnStarting().GetAwaiter().GetResult();
+            ProduceStartAndFireOnStarting();
 
             if (_autoChunk)
             {
@@ -527,7 +527,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ChunkWriter.WriteEndChunkBytes(ref end);
 
             // REVIEW: Should we block? or just fire and forget?
-            OutputChannel.EndWrite(end).GetAwaiter().GetResult();
+            OutputChannel.EndWriteAsync(end);
         }
 
         private Task WriteChunkedAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
@@ -540,7 +540,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             ChunkWriter.WriteEndChunkBytes(ref end);
 
-            return OutputChannel.EndWrite(end);
+            return OutputChannel.EndWriteAsync(end);
         }
 
         private Task WriteChunkedResponseSuffix()
@@ -567,7 +567,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
             {
 
-                OutputChannel.WriteAsync(_continueBytes).GetAwaiter().GetResult();
+                OutputChannel.WriteAsync(_continueBytes);
             }
         }
 
@@ -705,7 +705,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (_keepAlive)
             {
-                ServiceContext.Log.ConnectionKeepAlive(ConnectionContext.ConnectionId);
+                ServiceContext.Log.ConnectionKeepAlive(ConnectionInformation.ConnectionId);
             }
 
             return TaskUtilities.CompletedTask;
@@ -717,7 +717,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (_keepAlive)
             {
-                ServiceContext.Log.ConnectionKeepAlive(ConnectionContext.ConnectionId);
+                ServiceContext.Log.ConnectionKeepAlive(ConnectionInformation.ConnectionId);
             }
         }
 
@@ -801,7 +801,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             end.CopyFrom(statusBytes);
             responseHeaders.CopyTo(ref end);
             end.CopyFrom(_bytesEndHeaders, 0, _bytesEndHeaders.Length);
-            OutputChannel.EndWrite(end).GetAwaiter().GetResult();
+            OutputChannel.EndWriteAsync(end);
         }
 
         protected RequestLineStatus TakeStartLine(MemoryPoolChannel input)
@@ -1135,7 +1135,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _requestProcessingStopping = true;
             _requestRejected = true;
             var ex = new BadHttpRequestException(message);
-            ServiceContext.Log.ConnectionBadRequest(ConnectionContext.ConnectionId, ex);
+            ServiceContext.Log.ConnectionBadRequest(ConnectionInformation.ConnectionId, ex);
             throw ex;
         }
 
@@ -1154,7 +1154,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 _applicationException = new AggregateException(_applicationException, ex);
             }
 
-            ServiceContext.Log.ApplicationError(ConnectionContext.ConnectionId, ex);
+            ServiceContext.Log.ApplicationError(ConnectionInformation.ConnectionId, ex);
         }
 
         private enum HttpVersionType

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
-    public interface IConnectionContext
+    public interface IConnectionInformation
     {
         ServerAddress ServerAddress { get; set; }
 
@@ -12,10 +12,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         IPEndPoint LocalEndPoint { get; set; }
 
-        MemoryPoolChannel InputChannel { get; set; }
-
-        MemoryPoolChannel OutputChannel { get; set; }
-
         string ConnectionId { get; set; }
+    }
+
+    public interface IConnectionContext
+    {
+        MemoryPoolChannel InputChannel { get; }
+
+        MemoryPoolChannel OutputChannel { get; }
     }
 }
