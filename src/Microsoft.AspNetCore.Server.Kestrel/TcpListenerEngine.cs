@@ -63,19 +63,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 {
                     var stream = new NetworkStream(_socket);
 
-                    Go(stream);
+                    await Process(stream);
                 }
             }
 
-            private async void Go(NetworkStream stream)
+            private async Task Process(NetworkStream stream)
             {
-                var t1 = DoReads(stream);
-                var t2 = DoWrites(stream);
-
-                await Task.WhenAny(t1, t2);
+                await Task.WhenAny(ProcessReads(stream), ProcessWrites(stream));
             }
 
-            private async Task DoReads(NetworkStream stream)
+            private async Task ProcessReads(NetworkStream stream)
             {
                 while (true)
                 {
@@ -104,7 +101,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 }
             }
 
-            private async Task DoWrites(NetworkStream stream)
+            private async Task ProcessWrites(NetworkStream stream)
             {
                 while (!OutputChannel.Completed)
                 {

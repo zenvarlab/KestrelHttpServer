@@ -95,7 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     DateHeaderValueManager = dateHeaderValueManager,
                     ServerOptions = Options
                 };
-#if FALSE
+#if TCPENGINE
                 var engine = new TcpListenerEngine();
                 engine.Initialize(serviceContext);
 #else
@@ -122,8 +122,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 {
                     _logger.LogWarning("Unable to determine EADDRINUSE value on this platform.");
                 }
-
+#if !TCPENGINE
                 engine.Start(threadCount);
+#endif
                 var atLeastOneListener = false;
 
                 foreach (var address in _serverAddresses.Addresses.ToArray())
@@ -235,8 +236,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 return new Disposable(() =>
                 {
-                    inputChannel.Dispose();
-                    outputChannel.Dispose();
+                    // Graceful shutdown
+                    frame.Stop();
+                    inputChannel.CompleteAwaiting();
+
+                    outputChannel.IncomingFin();
                 });
             }
 
@@ -254,8 +258,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
             Action dispose = () =>
             {
-                inputChannel.Dispose();
-                outputChannel.Dispose();
+                // Graceful shutdown
+                frame.Stop();
+                inputChannel.CompleteAwaiting();
+
+                outputChannel.IncomingFin();
             };
 
             if (connectionFilterContext.Connection != stream)
@@ -276,10 +283,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 {
                     streamConnection.Dispose();
 
-                    inputChannel.Dispose();
-                    outputChannel.Dispose();
+                    frame.Stop();
+                    inputChannel.CompleteAwaiting();
+
+                    outputChannel.IncomingFin();
                 };
             }
+
             frame.Start();
             return new Disposable(dispose);
         }

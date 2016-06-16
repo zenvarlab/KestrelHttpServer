@@ -49,9 +49,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             try
             {
-                while (true)
+                while (!OutputChannel.Completed)
                 {
                     await OutputChannel;
+
+                    if (OutputChannel.Completed)
+                    {
+                        break;
+                    }
 
                     // Switch to the UV thread
                     await LibuvThread;

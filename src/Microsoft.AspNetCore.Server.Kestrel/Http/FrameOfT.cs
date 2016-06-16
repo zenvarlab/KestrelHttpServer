@@ -144,6 +144,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     Reset();
                 }
             }
+            catch (TaskCanceledException)
+            {
+                // Explicitly aborted 
+            }
             catch (Exception ex)
             {
                 ServiceContext.Log.LogWarning(0, ex, "Connection processing ended abnormally");
