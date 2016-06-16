@@ -14,7 +14,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
         private readonly string _connectionId;
         private readonly Stream _stream;
         private readonly IKestrelTrace _log;
-        private bool _aborted = false;
 
         public StreamConnection(
             string connectionId,
@@ -128,11 +127,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             {
                 // TODO: Log
             }
-        }
-
-        public void Abort()
-        {
-            _aborted = true;
         }
 
         public void Dispose()
