@@ -27,11 +27,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ConnectionManager = listenerContext.ConnectionManager;
             WriteReqPool = listenerContext.WriteReqPool;
             Log = listenerContext.Log;
+            ConnectionInitializer = listenerContext.ConnectionInitializer;
         }
 
         public ServerAddress ServerAddress { get; set; }
 
         public LibuvThread LibuvThread { get; set; }
+
+        public IConnectionInitializer ConnectionInitializer { get; set; }
 
         public LibuvConnectionManager ConnectionManager { get; set; }
 

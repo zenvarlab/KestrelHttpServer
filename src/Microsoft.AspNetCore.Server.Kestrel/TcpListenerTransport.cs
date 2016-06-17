@@ -12,15 +12,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel
     public class TcpListenerTransport : ITransport
     {
         private ServiceContext _serviceContext;
+        private IConnectionInitializer _initializer;
 
-        public void Initialize(ServiceContext serviceContext)
+        public void Initialize(IConnectionInitializer initializer, ServiceContext serviceContext)
         {
+            _initializer = initializer;
             _serviceContext = serviceContext;
         }
 
         public IDisposable CreateListener(ServerAddress address)
         {
-            var listener = new Listener(_serviceContext);
+            var listener = new Listener(_initializer, _serviceContext);
             listener.Start(address);
 
             return listener;
@@ -34,7 +36,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private class Listener : IDisposable
         {
 #if !NET451
-            public Listener(ServiceContext serviceContext)
+            public Listener(IConnectionInitializer initializer, ServiceContext serviceContext)
             {
             }
 
@@ -48,11 +50,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
 #else
             private readonly ServiceContext _serviceContext;
+            private readonly IConnectionInitializer _initializer;
             private TcpListener _listener;
             private CancellationTokenSource _cts = new CancellationTokenSource();
 
-            public Listener(ServiceContext serviceContext)
+            public Listener(IConnectionInitializer initializer, ServiceContext serviceContext)
             {
+                _initializer = initializer;
                 _serviceContext = serviceContext;
             }
 
@@ -82,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 connection.ServerAddress = address;
                 connection.RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
                 connection.LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
-                var connectionContext = await _serviceContext.StartConnectionAsync(connection, _serviceContext);
+                var connectionContext = await _initializer.StartConnectionAync(connection, _serviceContext);
                 connection.Start(connectionContext);
             }
 

@@ -21,13 +21,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             RemoteEndPoint = context.RemoteEndPoint;
             LocalEndPoint = context.LocalEndPoint;
-            ConnectionId = context.ConnectionId;
         }
         
         public IPEndPoint RemoteEndPoint { get; set; }
 
         public IPEndPoint LocalEndPoint { get; set; }
-
-        public string ConnectionId { get; set; }
     }
 }

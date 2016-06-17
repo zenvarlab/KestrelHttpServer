@@ -36,7 +36,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public async Task StartAsync(
             string pipeName,
             ServerAddress address,
-            LibuvThread thread)
+            LibuvThread thread,
+            IConnectionInitializer connectionInitializer)
         {
             _pipeName = pipeName;
 
@@ -47,7 +48,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 Marshal.StructureToPtr(fileCompletionInfo, _fileCompletionInfoPtr, false);
             }
 
-            await StartAsync(address, thread);
+            await StartAsync(address, thread, connectionInitializer);
 
             await LibuvThread;
 

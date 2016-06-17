@@ -32,9 +32,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             _engine?.Dispose();
         }
 
-        public void Initialize(ServiceContext serviceContext)
+        public void Initialize(IConnectionInitializer initiailizer, ServiceContext serviceContext)
         {
             _engine = new LibuvEngine(serviceContext);
+            _engine.ConnectionInitializer = initiailizer;
             _engine.Start(_threadCount);
         }
     }
@@ -53,6 +54,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             Threads = new List<LibuvThread>();
         }
 
+        public IConnectionInitializer ConnectionInitializer { get; set; }
         public Libuv Libuv { get; private set; }
         public List<LibuvThread> Threads { get; private set; }
 
@@ -99,7 +101,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                             (LibuvListener)new PipeListener(this) :
                             new LibuvTcpListener(this);
                         listeners.Add(listener);
-                        listener.StartAsync(address, thread).Wait();
+                        listener.StartAsync(address, thread, ConnectionInitializer).Wait();
                     }
                     else if (first)
                     {
@@ -108,7 +110,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                             : new LibuvTcpListenerPrimary(this);
 
                         listeners.Add(listener);
-                        listener.StartAsync(pipeName, address, thread).Wait();
+                        listener.StartAsync(pipeName, address, thread, ConnectionInitializer).Wait();
                     }
                     else
                     {
@@ -116,7 +118,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                             ? (LibuvListenerSecondary)new PipeListenerSecondary(this)
                             : new LibuvTcpListenerSecondary(this);
                         listeners.Add(listener);
-                        listener.StartAsync(pipeName, address, thread).Wait();
+                        listener.StartAsync(pipeName, address, thread, ConnectionInitializer).Wait();
                     }
 
                     first = false;

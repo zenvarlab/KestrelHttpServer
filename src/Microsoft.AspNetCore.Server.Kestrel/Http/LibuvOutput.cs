@@ -14,7 +14,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             LibuvThread libuvThread,
             UvStreamHandle socket,
             MemoryPoolChannel outputChannel,
-            LibuvConnection connection,
+            string connectionId,
             IKestrelTrace log,
             IThreadPool threadPool,
             Queue<UvWriteReq> writeReqPool)
@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             LibuvThread = libuvThread;
             Socket = socket;
             OutputChannel = outputChannel;
-            Connection = connection;
+            ConnectionId = connectionId;
             Log = log;
             ThreadPool = threadPool;
             WriteReqPool = writeReqPool;
@@ -38,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public LibuvThread LibuvThread { get; }
 
-        public LibuvConnection Connection { get; }
+        public string ConnectionId { get; }
 
         public Queue<UvWriteReq> WriteReqPool { get; }
 
@@ -79,11 +79,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     {
                         req.Write(Socket, start, end, buffers, LibuvAwaitable<UvWriteReq>.Callback, awaitable);
                         int status = await awaitable;
-                        Log.ConnectionWriteCallback(Connection.ConnectionId, status);
+                        Log.ConnectionWriteCallback(ConnectionId, status);
                     }
                     catch (Exception ex)
                     {
-                        Log.ConnectionError(Connection.ConnectionId, ex);
+                        Log.ConnectionError(ConnectionId, ex);
                         break;
                     }
                     finally
@@ -113,7 +113,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         shutdownReq.Shutdown(Socket, LibuvAwaitable<UvShutdownReq>.Callback, shutdownAwaitable);
                         int status = await shutdownAwaitable;
 
-                        Log.ConnectionWroteFin(Connection.ConnectionId, status);
+                        Log.ConnectionWroteFin(ConnectionId, status);
                     }
 
                 }
@@ -129,7 +129,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 // REVIEW: Who stops this?
                 // OutputChannel.Dispose();
 
-                Log.ConnectionStop(Connection.ConnectionId);
+                Log.ConnectionStop(ConnectionId);
             }
         }
 

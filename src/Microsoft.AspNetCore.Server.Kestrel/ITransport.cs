@@ -7,7 +7,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 {
     public interface ITransport : IDisposable
     {
-        void Initialize(ServiceContext serviceContext);
+        void Initialize(IConnectionInitializer initializer, ServiceContext serviceContext);
 
         IDisposable CreateListener(ServerAddress address);
     }

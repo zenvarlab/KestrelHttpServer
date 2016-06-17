@@ -6,17 +6,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
     public interface IConnectionInformation
     {
-        ServerAddress ServerAddress { get; set; }
+        ServerAddress ServerAddress { get; }
 
-        IPEndPoint RemoteEndPoint { get; set; }
+        IPEndPoint RemoteEndPoint { get; }
 
-        IPEndPoint LocalEndPoint { get; set; }
-
-        string ConnectionId { get; set; }
+        IPEndPoint LocalEndPoint { get; }
     }
 
     public interface IConnectionContext
     {
+        string ConnectionId { get; }
+
         MemoryPoolChannel InputChannel { get; }
 
         MemoryPoolChannel OutputChannel { get; }

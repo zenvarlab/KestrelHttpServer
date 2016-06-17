@@ -20,14 +20,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             LibuvThread libuvThread,
             UvStreamHandle socket,
             MemoryPoolChannel inputChannel,
-            LibuvConnection connection,
+            string connectionId,
             IKestrelTrace log,
             IThreadPool threadPool)
         {
             LibuvThread = libuvThread;
             Socket = socket;
             InputChannel = inputChannel;
-            Connection = connection;
+            ConnectionId = connectionId;
             Log = log;
             ThreadPool = threadPool;
         }
@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public LibuvThread LibuvThread { get; }
 
-        public LibuvConnection Connection { get; private set; }
+        public string ConnectionId { get; private set; }
 
         public Task Start()
         {
@@ -62,7 +62,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private void Stop()
         {
-            Log.ConnectionPause(Connection.ConnectionId);
+            Log.ConnectionPause(ConnectionId);
             Socket.ReadStop();
         }
 
@@ -102,13 +102,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (normalRead)
             {
-                Log.ConnectionRead(Connection.ConnectionId, readCount);
+                Log.ConnectionRead(ConnectionId, readCount);
             }
             else
             {
                 Socket.ReadStop();
 
-                Log.ConnectionReadFin(Connection.ConnectionId);
+                Log.ConnectionReadFin(ConnectionId);
             }
 
             Exception error = null;

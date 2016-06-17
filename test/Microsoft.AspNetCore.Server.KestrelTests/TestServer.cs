@@ -31,10 +31,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             Context = context;
 
-            context.FrameFactory = (connectionContext, serviceContext) =>
-            {
-                return new Frame<HttpContext>(new DummyApplication(app), connectionContext, serviceContext);
-            };
+            //context.FrameFactory = (connectionContext, serviceContext) =>
+            //{
+            //    return new Frame<HttpContext>(new DummyApplication(app), connectionContext, serviceContext);
+            //};
 
             try
             {

@@ -26,8 +26,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public async void Start()
         {
-            Log.ConnectionStart(ConnectionId);
-
             var tcpHandle = _socket as UvTcpHandle;
             if (tcpHandle != null)
             {
@@ -35,10 +33,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 LocalEndPoint = tcpHandle.GetSockIPEndPoint();
             }
 
-            var context = await StartConnectionAsync(this, this);
+            var context = await ConnectionInitializer.StartConnectionAync(this, this);
 
-            var input = new LibuvInput(LibuvThread, _socket, context.InputChannel, this, Log, ThreadPool);
-            var output = new LibuvOutput(LibuvThread, _socket, context.OutputChannel, this, Log, ThreadPool, WriteReqPool);
+            var input = new LibuvInput(LibuvThread, _socket, context.InputChannel, context.ConnectionId, Log, ThreadPool);
+            var output = new LibuvOutput(LibuvThread, _socket, context.OutputChannel, context.ConnectionId, Log, ThreadPool, WriteReqPool);
 
             var inputTask = input.Start();
             var outputTask = output.Start();

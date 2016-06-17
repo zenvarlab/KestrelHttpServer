@@ -24,7 +24,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public async Task StartAsync(
             ServerAddress address,
-            LibuvThread thread)
+            LibuvThread thread,
+            IConnectionInitializer initializer)
         {
             ServerAddress = address;
             LibuvThread = thread;

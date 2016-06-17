@@ -290,8 +290,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         string IHttpConnectionFeature.ConnectionId
         {
-            get { return ConnectionIdFeature; }
-            set { ConnectionIdFeature = value; }
+            get { return ConnectionId; }
+            set { ConnectionId = value; }
         }
 
         object IFeatureCollection.this[Type key]

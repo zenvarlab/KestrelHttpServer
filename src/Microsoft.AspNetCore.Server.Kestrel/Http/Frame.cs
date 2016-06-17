@@ -85,7 +85,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             Reset();
         }
 
-        public string ConnectionIdFeature { get; set; }
+        public string ConnectionId { get; set; }
         public IPAddress RemoteIpAddress { get; set; }
         public int RemotePort { get; set; }
         public IPAddress LocalIpAddress { get; set; }
@@ -301,7 +301,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             LocalIpAddress = ConnectionInformation.LocalEndPoint?.Address;
             LocalPort = ConnectionInformation.LocalEndPoint?.Port ?? 0;
-            ConnectionIdFeature = ConnectionInformation.ConnectionId;
 
             PrepareRequest?.Invoke(this);
 
@@ -705,7 +704,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (_keepAlive)
             {
-                ServiceContext.Log.ConnectionKeepAlive(ConnectionInformation.ConnectionId);
+                ServiceContext.Log.ConnectionKeepAlive(ConnectionId);
             }
 
             return TaskUtilities.CompletedTask;
@@ -717,7 +716,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             if (_keepAlive)
             {
-                ServiceContext.Log.ConnectionKeepAlive(ConnectionInformation.ConnectionId);
+                ServiceContext.Log.ConnectionKeepAlive(ConnectionId);
             }
         }
 
@@ -1135,7 +1134,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _requestProcessingStopping = true;
             _requestRejected = true;
             var ex = new BadHttpRequestException(message);
-            ServiceContext.Log.ConnectionBadRequest(ConnectionInformation.ConnectionId, ex);
+            ServiceContext.Log.ConnectionBadRequest(ConnectionId, ex);
             throw ex;
         }
 
@@ -1154,7 +1153,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 _applicationException = new AggregateException(_applicationException, ex);
             }
 
-            ServiceContext.Log.ApplicationError(ConnectionInformation.ConnectionId, ex);
+            ServiceContext.Log.ApplicationError(ConnectionId, ex);
         }
 
         private enum HttpVersionType
