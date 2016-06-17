@@ -6,6 +6,7 @@ using System.IO;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.Extensions.Logging;
 
 namespace SampleApp
@@ -45,6 +46,7 @@ namespace SampleApp
                 {
                     // options.ThreadCount = 4;
                     options.NoDelay = true;
+                    options.Transport = new TcpListenerTransport();
                     // options.UseHttps("testCert.pfx", "testPassword");
                     // options.UseConnectionLogging();
                 })

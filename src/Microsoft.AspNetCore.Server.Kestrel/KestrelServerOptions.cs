@@ -28,6 +28,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public int ThreadCount { get; set; } = ProcessorThreadCount;
 
+        public ITransport Transport { get; set; }
+
         private static int ProcessorThreadCount
         {
             get

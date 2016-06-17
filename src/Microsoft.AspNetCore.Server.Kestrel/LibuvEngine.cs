@@ -12,6 +12,33 @@ using Microsoft.AspNetCore.Server.Kestrel.Networking;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
+    public class LibuvTransport : ITransport
+    {
+        private LibuvEngine _engine;
+        private readonly int _threadCount;
+
+        public LibuvTransport(int threadCount)
+        {
+            _threadCount = threadCount;
+        }
+
+        public IDisposable CreateListener(ServerAddress address)
+        {
+            return _engine.CreateServer(address);
+        }
+
+        public void Dispose()
+        {
+            _engine?.Dispose();
+        }
+
+        public void Initialize(ServiceContext serviceContext)
+        {
+            _engine = new LibuvEngine(serviceContext);
+            _engine.Start(_threadCount);
+        }
+    }
+
     public class LibuvEngine : ServiceContext, IDisposable
     {
         public LibuvEngine(ServiceContext context)

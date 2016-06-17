@@ -1,8 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-#define TCPENGINE
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -97,14 +95,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     DateHeaderValueManager = dateHeaderValueManager,
                     ServerOptions = Options
                 };
-#if TCPENGINE && NET451
-                var engine = new TcpListenerEngine();
-                engine.Initialize(serviceContext);
-#else
-                var engine = new LibuvEngine(serviceContext);
-#endif
 
-                _disposables.Push(engine);
+                var transport = Options.Transport ?? new LibuvTransport(Options.ThreadCount);
+
+                transport.Initialize(serviceContext);
+
+                _disposables.Push(transport);
                 _disposables.Push(dateHeaderValueManager);
 
                 var threadCount = Options.ThreadCount;
@@ -124,9 +120,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 {
                     _logger.LogWarning("Unable to determine EADDRINUSE value on this platform.");
                 }
-#if !TCPENGINE
-                engine.Start(threadCount);
-#endif
+
                 var atLeastOneListener = false;
 
                 foreach (var address in _serverAddresses.Addresses.ToArray())
@@ -136,7 +130,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                     if (!parsedAddress.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase))
                     {
-                        _disposables.Push(engine.CreateServer(
+                        _disposables.Push(transport.CreateListener(
                             parsedAddress));
                     }
                     else
@@ -151,7 +145,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                         try
                         {
-                            _disposables.Push(engine.CreateServer(ipv4Address));
+                            _disposables.Push(transport.CreateListener(ipv4Address));
                         }
                         catch (AggregateException ex)
                         {
@@ -172,7 +166,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                         try
                         {
-                            _disposables.Push(engine.CreateServer(ipv6Address));
+                            _disposables.Push(transport.CreateListener(ipv6Address));
                         }
                         catch (AggregateException ex)
                         {

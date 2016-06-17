@@ -9,8 +9,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
-#if NET451
-    public class TcpListenerEngine : IDisposable
+    public class TcpListenerTransport : ITransport
     {
         private ServiceContext _serviceContext;
 
@@ -19,7 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             _serviceContext = serviceContext;
         }
 
-        public IDisposable CreateServer(ServerAddress address)
+        public IDisposable CreateListener(ServerAddress address)
         {
             var listener = new Listener(_serviceContext);
             listener.Start(address);
@@ -34,6 +33,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         private class Listener : IDisposable
         {
+#if !NET451
+            public Listener(ServiceContext serviceContext)
+            {
+            }
+
+            public async void Start(ServerAddress address)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void Dispose()
+            {
+            }
+#else
             private readonly ServiceContext _serviceContext;
             private TcpListener _listener;
             private CancellationTokenSource _cts = new CancellationTokenSource();
@@ -53,12 +66,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     try
                     {
                         var socket = await _listener.AcceptSocketAsync();
-
-                        var connection = new SocketConnection(socket, _serviceContext, _cts.Token);
-                        connection.ServerAddress = address;
-                        connection.RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
-                        connection.LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
-                        connection.Start();
+                        StartConnectionAsync(address, socket);
                     }
                     catch (ObjectDisposedException)
                     {
@@ -66,6 +74,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                         break;
                     }
                 }
+            }
+
+            private async void StartConnectionAsync(ServerAddress address, Socket socket)
+            {
+                var connection = new SocketConnection(socket, _cts.Token);
+                connection.ServerAddress = address;
+                connection.RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
+                connection.LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
+                var connectionContext = await _serviceContext.StartConnectionAsync(connection, _serviceContext);
+                connection.Start(connectionContext);
             }
 
             public void Dispose()
@@ -78,20 +96,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private class SocketConnection : IConnectionInformation
         {
             private readonly Socket _socket;
-            private readonly ServiceContext _serviceContext;
             private readonly CancellationToken _token;
 
-            public SocketConnection(Socket socket, ServiceContext serviceContext, CancellationToken token)
+            public SocketConnection(Socket socket, CancellationToken token)
             {
                 _socket = socket;
-                _serviceContext = serviceContext;
                 _token = token;
             }
 
-            public async void Start()
+            public async void Start(IConnectionContext connectionContext)
             {
-                var connectionContext = await _serviceContext.StartConnectionAsync(this, _serviceContext);
-
                 var stream = new NetworkStream(_socket);
 
                 await Process(connectionContext, stream);
@@ -141,11 +155,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     {
                         await context.OutputChannel;
 
-                        if (context.OutputChannel.Completed)
-                        {
-                            break;
-                        }
-
                         var start = context.OutputChannel.BeginRead();
                         var end = context.OutputChannel.End();
 
@@ -187,7 +196,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 _socket.Dispose();
             }
-
+#endif
             public string ConnectionId { get; set; }
 
             public IPEndPoint LocalEndPoint { get; set; }
@@ -197,6 +206,4 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             public ServerAddress ServerAddress { get; set; }
         }
     }
-#endif
-
 }
