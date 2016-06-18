@@ -8,6 +8,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
     public static class WritableChannelExtensions
     {
+        public static Task WriteAsync(this IWritableChannel channel, byte[] buffer, int offset, int length)
+        {
+            var end = channel.BeginWrite();
+            end.CopyFrom(buffer, offset, length);
+            return channel.EndWriteAsync(end);
+        }
+
         public static Task WriteAsync(this IWritableChannel channel, ArraySegment<byte> buffer)
         {
             return channel.WriteAsync(buffer.Array, buffer.Offset, buffer.Count);
