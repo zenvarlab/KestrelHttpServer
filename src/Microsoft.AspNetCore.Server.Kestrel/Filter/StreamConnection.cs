@@ -66,7 +66,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
                     }
                     catch (Exception error)
                     {
-                        await OutputChannel.EndWriteAsync(end, error);
+                        // await OutputChannel.EndWriteAsync(end, error);
                     }
                 }
             }
@@ -77,7 +77,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             }
             finally
             {
-                OutputChannel.IncomingFin();
+                // OutputChannel.IncomingFin();
             }
         }
 

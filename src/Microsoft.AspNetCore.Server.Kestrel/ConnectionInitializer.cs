@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         // for a roughly increasing _requestId over restarts
         private static long _lastConnectionId = DateTime.UtcNow.Ticks;
 
-        private List<Frame> _frames = new List<Frame>();
+        private List<Func<Task>> _stopFrame = new List<Func<Task>>();
 
         public ConnectionInitializer(IHttpApplication<TContext> application)
         {
@@ -34,7 +34,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             var connectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
 
             var frame = new Frame<TContext>(_application, connectionInformation, serviceContext);
-            _frames.Add(frame);
 
             var inputChannel = new MemoryPoolChannel(serviceContext.Memory, serviceContext.ThreadPool);
             var outputChannel = new MemoryPoolChannel(serviceContext.Memory, serviceContext.ThreadPool);
@@ -42,6 +41,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             frame.ConnectionId = connectionId;
             frame.InputChannel = inputChannel;
             frame.OutputChannel = outputChannel;
+
+            _stopFrame.Add(() =>
+            {
+                var task = frame.StopAsync();
+                inputChannel.CompleteAwaiting();
+                return task;
+            });
+
 
             if (serviceContext.ServerOptions.ConnectionFilter == null)
             {
@@ -114,13 +121,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public void Dispose()
         {
-            var tasks = new Task[_frames.Count];
+            var tasks = new Task[_stopFrame.Count];
 
             for (int i = 0; i < tasks.Length; i++)
             {
-                var frame = _frames[i];
-                tasks[i] = frame.StopAsync();
-                frame.InputChannel.CompleteAwaiting();
+                var frame = _stopFrame[i];
+                tasks[i] = frame();
             }
 
             Task.WaitAll(tasks);
@@ -137,9 +143,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
             public string ConnectionId { get; private set; }
 
-            public MemoryPoolChannel InputChannel { get; private set; }
+            public IWritableChannel InputChannel { get; private set; }
 
-            public MemoryPoolChannel OutputChannel { get; private set; }
+            public IReadableChannel OutputChannel { get; private set; }
         }
     }
 }

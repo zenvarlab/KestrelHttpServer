@@ -163,7 +163,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     // If _requestAborted is set, the connection has already been closed.
                     if (Volatile.Read(ref _requestAborted) == 0)
                     {
-                        OutputChannel.Cancel();
+                        OutputChannel.CompleteWriting();
                     }
                 }
                 catch (Exception ex)
@@ -171,7 +171,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     ServiceContext.Log.LogWarning(0, ex, "Connection shutdown abnormally");
                 }
 
-                OutputChannel.Dispose();
+                OutputChannel.Close();
             }
         }
     }

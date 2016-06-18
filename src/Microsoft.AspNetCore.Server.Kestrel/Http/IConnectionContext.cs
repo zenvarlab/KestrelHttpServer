@@ -18,8 +18,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
     {
         string ConnectionId { get; }
 
-        MemoryPoolChannel InputChannel { get; }
+        IWritableChannel InputChannel { get; }
 
-        MemoryPoolChannel OutputChannel { get; }
+        IReadableChannel OutputChannel { get; }
     }
 }

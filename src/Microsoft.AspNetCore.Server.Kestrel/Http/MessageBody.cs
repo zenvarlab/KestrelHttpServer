@@ -234,7 +234,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 return new ValueTask<int>(ReadStateMachineAsync(_context.InputChannel, buffer, cancellationToken));
             }
 
-            private async Task<int> ReadStateMachineAsync(MemoryPoolChannel input, ArraySegment<byte> buffer, CancellationToken cancellationToken)
+            private async Task<int> ReadStateMachineAsync(IReadableChannel input, ArraySegment<byte> buffer, CancellationToken cancellationToken)
             {
                 while (_mode < Mode.Trailer)
                 {
@@ -359,7 +359,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 return 0;
             }
 
-            private void ParseChunkedPrefix(MemoryPoolChannel input)
+            private void ParseChunkedPrefix(IReadableChannel input)
             {
                 var scan = input.BeginRead();
                 var consumed = scan;
@@ -419,7 +419,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 }
             }
 
-            private void ParseExtension(MemoryPoolChannel input)
+            private void ParseExtension(IReadableChannel input)
             {
                 var scan = input.BeginRead();
                 var consumed = scan;
@@ -463,7 +463,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 }
             }
 
-            private int ReadChunkedData(MemoryPoolChannel input, byte[] buffer, int offset, int count)
+            private int ReadChunkedData(IReadableChannel input, byte[] buffer, int offset, int count)
             {
                 var scan = input.BeginRead();
                 int actual;
@@ -486,7 +486,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 return actual;
             }
 
-            private void ParseChunkedSuffix(MemoryPoolChannel input)
+            private void ParseChunkedSuffix(IReadableChannel input)
             {
                 var scan = input.BeginRead();
                 var consumed = scan;
@@ -514,7 +514,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 }
             }
 
-            private void ParseChunkedTrailer(MemoryPoolChannel input)
+            private void ParseChunkedTrailer(IReadableChannel input)
             {
                 var scan = input.BeginRead();
                 var consumed = scan;

@@ -5,7 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
@@ -143,8 +143,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                             if (bytesRead == 0)
                             {
-                                context.InputChannel.Completed = true;
                                 await context.InputChannel.EndWriteAsync(end);
+                                context.InputChannel.CompleteWriting();
                                 break;
                             }
                             else
@@ -160,7 +160,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                                 break;
                             }
 
-                            await context.InputChannel.EndWriteAsync(end, error);
+                            context.InputChannel.CompleteWriting(error);
                             break;
                         }
                     }
@@ -170,7 +170,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 }
 
-                context.InputChannel.Dispose();
+                context.InputChannel.Close();
             }
 
             private async Task ProcessWrites(IConnectionContext context, NetworkStream stream)

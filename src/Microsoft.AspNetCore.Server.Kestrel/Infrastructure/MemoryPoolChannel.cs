@@ -9,7 +9,33 @@ using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
-    public class MemoryPoolChannel : ICriticalNotifyCompletion, IDisposable
+    public interface IWritableChannel
+    {
+        MemoryPoolIterator BeginWrite();
+        Task EndWriteAsync(MemoryPoolIterator end);
+
+        Task WriteAsync(byte[] buffer, int offset, int length);
+
+        void CompleteWriting(Exception error = null);
+
+        void Close();
+    }
+
+    // TODO: Make this usable without the awaitable, split that into a struct
+    public interface IReadableChannel : ICriticalNotifyCompletion
+    {
+        // Make it awaitable
+        bool IsCompleted { get; }
+        void GetResult();
+        IReadableChannel GetAwaiter();
+
+        bool Completed { get; }
+        MemoryPoolIterator BeginRead();
+        void EndRead(MemoryPoolIterator consumed, MemoryPoolIterator examined);
+        MemoryPoolIterator End();
+    }
+
+    public class MemoryPoolChannel : IReadableChannel, IWritableChannel, IDisposable
     {
         private static readonly Action _awaitableIsCompleted = () => { };
         private static readonly Action _awaitableIsNotCompleted = () => { };
@@ -77,28 +103,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             return new MemoryPoolIterator(_tail, _tail.End);
         }
 
-        public void Write(byte[] buffer)
-        {
-            Write(buffer, 0, buffer.Length);
-        }
-
-        public void Write(ArraySegment<byte> buffer)
-        {
-            Write(buffer.Array, buffer.Offset, buffer.Count);
-        }
-
-        public void Write(byte[] buffer, int offset, int count)
-        {
-            // Writing is synchronous, it'll only block if there's enough back pressure 
-            // (the consumer isn't reading fast enough)
-            WriteAsync(buffer, offset, count).GetAwaiter().GetResult();
-        }
-
-        public Task WriteAsync(byte[] buffer)
-        {
-            return WriteAsync(buffer, 0, buffer.Length);
-        }
-
         public Task WriteAsync(ArraySegment<byte> buffer)
         {
             return WriteAsync(buffer.Array, buffer.Offset, buffer.Count);
@@ -126,11 +130,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
         public Task EndWriteAsync(MemoryPoolIterator end)
         {
-            return EndWriteAsync(end, error: null);
-        }
-
-        public Task EndWriteAsync(MemoryPoolIterator end, Exception error)
-        {
             lock (_sync)
             {
                 if (!end.IsDefault)
@@ -148,21 +147,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                     }
                 }
 
-                if (error != null)
-                {
-                    _awaitableError = error;
-                }
-
                 Complete();
 
                 return _limitState?.Tcs.Task ?? TaskUtilities.CompletedTask;
             }
-        }
-
-        public void IncomingFin()
-        {
-            // Force a FIN
-            WriteAsync(null, 0, 0);
         }
 
         private void Complete()
@@ -257,6 +245,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             Complete();
         }
 
+        public void CompleteWriting(Exception error = null)
+        {
+            Completed = true;
+
+            lock (_sync)
+            {
+                if (error != null)
+                {
+                    _awaitableError = error;
+                }
+
+                Complete();
+            }
+        }
+
         public void Cancel()
         {
             _awaitableError = new TaskCanceledException("The request was aborted");
@@ -264,7 +267,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             Complete();
         }
 
-        public MemoryPoolChannel GetAwaiter()
+        public IReadableChannel GetAwaiter()
         {
             return this;
         }
@@ -320,6 +323,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                 }
                 throw new IOException(error.Message, error);
             }
+        }
+
+        public void Close()
+        {
+            Dispose();
         }
 
         public void Dispose()

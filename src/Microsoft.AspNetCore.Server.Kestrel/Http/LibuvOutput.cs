@@ -13,7 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public LibuvOutput(
             LibuvThread libuvThread,
             UvStreamHandle socket,
-            MemoryPoolChannel outputChannel,
+            IReadableChannel outputChannel,
             string connectionId,
             IKestrelTrace log,
             IThreadPool threadPool,
@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public IKestrelTrace Log { get; }
 
-        public MemoryPoolChannel OutputChannel { get; }
+        public IReadableChannel OutputChannel { get; }
 
         public UvStreamHandle Socket { get; }
 

@@ -66,9 +66,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private string ServerPathBase => ConnectionInformation.ServerAddress.PathBase;
 
-        public MemoryPoolChannel InputChannel { get; set; }
+        public IReadableChannel InputChannel { get; set; }
 
-        public MemoryPoolChannel OutputChannel { get; set; }
+        public IWritableChannel OutputChannel { get; set; }
 
         public IConnectionInformation ConnectionInformation { get; }
 
@@ -345,7 +345,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 try
                 {
-                    OutputChannel.Cancel();
+                    OutputChannel.Close();
                 }
                 catch (Exception ex)
                 {
@@ -472,7 +472,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             else
             {
-                OutputChannel.Write(data);
+                OutputChannel.WriteAsync(data);
             }
         }
 
@@ -803,7 +803,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             OutputChannel.EndWriteAsync(end);
         }
 
-        protected RequestLineStatus TakeStartLine(MemoryPoolChannel input)
+        protected RequestLineStatus TakeStartLine(IReadableChannel input)
         {
             var scan = input.BeginRead();
             var consumed = scan;
@@ -983,7 +983,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             return true;
         }
 
-        public bool TakeMessageHeaders(MemoryPoolChannel input, FrameRequestHeaders requestHeaders)
+        public bool TakeMessageHeaders(IReadableChannel input, FrameRequestHeaders requestHeaders)
         {
             var scan = input.BeginRead();
             var consumed = scan;

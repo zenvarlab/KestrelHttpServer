@@ -6,55 +6,22 @@ using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
-    public static class MemoryPoolChannelExtensions
+    public static class WritableChannelExtensions
     {
-        public static async Task CopyToAsync(this MemoryPoolChannel input, MemoryPoolChannel output)
+        public static Task WriteAsync(this IWritableChannel channel, ArraySegment<byte> buffer)
         {
-            while (true)
-            {
-                await input;
+            return channel.WriteAsync(buffer.Array, buffer.Offset, buffer.Count);
+        }
+    }
 
-                var fin = input.Completed;
-
-                var begin = input.BeginRead();
-                var end = input.End();
-
-                try
-                {
-                    var block = begin.Block;
-
-                    var writeEnd = output.BeginWrite();
-
-                    while (true)
-                    {
-                        var blockStart = block == begin.Block ? begin.Index : block.Data.Offset;
-                        var blockEnd = block == end.Block ? end.Index : block.Data.Offset + block.Data.Count;
-
-                        writeEnd.CopyFrom(block.Array, blockStart, blockEnd - blockStart);
-
-                        if (block == end.Block)
-                        {
-                            break;
-                        }
-
-                        block = block.Next;
-                    }
-
-                    await output.EndWriteAsync(writeEnd);
-                }
-                finally
-                {
-                    input.EndRead(end);
-                }
-
-                if (fin)
-                {
-                    return;
-                }
-            }
+    public static class ReadableChannelExtensions
+    {
+        public static void EndRead(this IReadableChannel input, MemoryPoolIterator consumed)
+        {
+            input.EndRead(consumed, consumed);
         }
 
-        public static ValueTask<int> ReadAsync(this MemoryPoolChannel input, byte[] buffer, int offset, int count)
+        public static ValueTask<int> ReadAsync(this IReadableChannel input, byte[] buffer, int offset, int count)
         {
             while (input.IsCompleted)
             {
@@ -78,7 +45,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             return new ValueTask<int>(input.ReadAsyncAwaited(buffer, offset, count));
         }
 
-        private static async Task<int> ReadAsyncAwaited(this MemoryPoolChannel input, byte[] buffer, int offset, int count)
+        private static async Task<int> ReadAsyncAwaited(this IReadableChannel input, byte[] buffer, int offset, int count)
         {
             while (true)
             {

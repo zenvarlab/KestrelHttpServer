@@ -49,7 +49,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             await Task.WhenAll(inputTask, outputTask);
 
-            context.InputChannel.Dispose();
+            context.InputChannel.Close();
         }
 
         public Task StopAsync()
