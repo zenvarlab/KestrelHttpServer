@@ -29,6 +29,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             ServerAddress = address;
             LibuvThread = thread;
+            ConnectionInitializer = initializer;
             ConnectionManager = new LibuvConnectionManager(thread);
 
             await LibuvThread;

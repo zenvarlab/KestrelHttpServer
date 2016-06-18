@@ -35,6 +35,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             DataFixedPtr = (byte*)dataArrayPtr.ToPointer();
         }
 
+        public string StackTrace { get; set; }
+
         /// <summary>
         /// Back-reference to the memory pool which this block was allocated from. It may only be returned to this pool.
         /// </summary>
@@ -74,7 +76,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
         ~MemoryPoolBlock()
         {
-            Debug.Assert(Slab == null || !Slab.IsActive, "Block being garbage collected instead of returned to pool");
+            Debug.Assert(Slab == null || !Slab.IsActive, "Block being garbage collected instead of returned to pool: \r\n" + StackTrace);
 
             if (Slab != null && Slab.IsActive)
             {

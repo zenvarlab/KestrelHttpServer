@@ -12,6 +12,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     public class LibuvConnection : LibuvConnectionContext
     {
         private readonly UvStreamHandle _socket;
+        private Task _processingTask;
 
         public LibuvConnection(LibuvListenerContext context, UvStreamHandle socket) : base(context)
         {
@@ -24,7 +25,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
         }
 
-        public async void Start()
+        public void Start()
+        {
+            _processingTask = StartProcessing();
+        }
+
+        private async Task StartProcessing()
         {
             var tcpHandle = _socket as UvTcpHandle;
             if (tcpHandle != null)
@@ -42,51 +48,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             var outputTask = output.Start();
 
             await Task.WhenAll(inputTask, outputTask);
+
+            context.InputChannel.Dispose();
         }
 
         public Task StopAsync()
         {
-            //lock (_stateLock)
-            //{
-            //    switch (_connectionState)
-            //    {
-            //        case ConnectionState.SocketClosed:
-            //            return TaskUtilities.CompletedTask;
-            //        case ConnectionState.CreatingFrame:
-            //            _connectionState = ConnectionState.ToDisconnect;
-            //            break;
-            //        case ConnectionState.Open:
-            //            _frame.Stop();
-            //            ConnectionInputChannel.CompleteAwaiting();
-            //            break;
-            //    }
-
-            //    _socketClosedTcs = new TaskCompletionSource<object>();
-            //    return _socketClosedTcs.Task;
-            //}
-            return TaskUtilities.CompletedTask;
-        }
-
-        public virtual void Abort()
-        {
-            // Frame.Abort calls user code while this method is always
-            // called from a libuv thread.
-            //ThreadPool.Run(() =>
-            //{
-            //    var connection = this;
-
-            //    lock (connection._stateLock)
-            //    {
-            //        if (connection._connectionState == ConnectionState.CreatingFrame)
-            //        {
-            //            connection._connectionState = ConnectionState.ToDisconnect;
-            //        }
-            //        else
-            //        {
-            //            connection._frame?.Abort();
-            //        }
-            //    }
-            //});
+            return _processingTask ?? TaskUtilities.CompletedTask;
         }
     }
 }

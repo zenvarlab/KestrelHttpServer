@@ -53,6 +53,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             private readonly IConnectionInitializer _initializer;
             private TcpListener _listener;
             private CancellationTokenSource _cts = new CancellationTokenSource();
+            private List<Task> _connections = new List<Task>();
 
             public Listener(IConnectionInitializer initializer, ServiceContext serviceContext)
             {
@@ -87,12 +88,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 connection.RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
                 connection.LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
                 var connectionContext = await _initializer.StartConnectionAync(connection, _serviceContext);
-                connection.Start(connectionContext);
+                _connections.Add(connection.Start(connectionContext));
             }
 
             public void Dispose()
             {
                 _cts.Cancel();
+                Task.WaitAll(_connections.ToArray());
                 _listener.Stop();
             }
         }
@@ -106,9 +108,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             {
                 _socket = socket;
                 _token = token;
+                _token.Register(state => Close(state), this);
             }
 
-            public async void Start(IConnectionContext connectionContext)
+            private static void Close(object state)
+            {
+                ((SocketConnection)state)._socket.Close();
+            }
+
+            public async Task Start(IConnectionContext connectionContext)
             {
                 var stream = new NetworkStream(_socket);
 
@@ -122,33 +130,47 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
             private async Task ProcessReads(IConnectionContext context, NetworkStream stream)
             {
-                while (true)
+                try
                 {
-                    var end = context.InputChannel.BeginWrite();
-                    var block = end.Block;
-
-                    try
+                    while (true)
                     {
-                        int bytesRead = await stream.ReadAsync(block.Array, block.End, block.Data.Offset + block.Data.Count - block.End, _token);
+                        var end = context.InputChannel.BeginWrite();
+                        var block = end.Block;
 
-                        if (bytesRead == 0)
+                        try
                         {
-                            context.InputChannel.Completed = true;
-                            await context.InputChannel.EndWriteAsync(end);
+                            int bytesRead = await stream.ReadAsync(block.Array, block.End, block.Data.Offset + block.Data.Count - block.End);
+
+                            if (bytesRead == 0)
+                            {
+                                context.InputChannel.Completed = true;
+                                await context.InputChannel.EndWriteAsync(end);
+                                break;
+                            }
+                            else
+                            {
+                                end.UpdateEnd(bytesRead);
+                                await context.InputChannel.EndWriteAsync(end);
+                            }
+                        }
+                        catch (Exception error)
+                        {
+                            if (_token.IsCancellationRequested || !_socket.Connected)
+                            {
+                                break;
+                            }
+
+                            await context.InputChannel.EndWriteAsync(end, error);
                             break;
                         }
-                        else
-                        {
-                            end.UpdateEnd(bytesRead);
-                            await context.InputChannel.EndWriteAsync(end);
-                        }
-                    }
-                    catch (Exception error)
-                    {
-                        await context.InputChannel.EndWriteAsync(end, error);
-                        break;
                     }
                 }
+                catch (Exception)
+                {
+
+                }
+
+                context.InputChannel.Dispose();
             }
 
             private async Task ProcessWrites(IConnectionContext context, NetworkStream stream)
@@ -172,7 +194,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                                 var blockEnd = block == end.Block ? end.Index : block.Data.Offset + block.Data.Count;
                                 var length = blockEnd - blockStart;
 
-                                await stream.WriteAsync(block.Array, blockStart, length, _token);
+                                await stream.WriteAsync(block.Array, blockStart, length);
 
                                 if (block == end.Block)
                                 {
@@ -198,7 +220,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     // Aborted
                 }
 
-                stream.Dispose();
+                _socket.Close();
             }
 #endif
             public string ConnectionId { get; set; }

@@ -67,13 +67,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
         public MemoryPoolBlock Lease()
         {
             MemoryPoolBlock block;
-            if (_blocks.TryDequeue(out block))
+            if (!_blocks.TryDequeue(out block))
             {
-                // block successfully taken from the stack - return it
-                return block;
+                // no blocks available - grow the pool
+                block = AllocateSlab();
             }
-            // no blocks available - grow the pool
-            return AllocateSlab();
+#if NET451
+            block.StackTrace = new StackTrace().ToString();
+#endif
+            return block;
         }
 
         /// <summary>

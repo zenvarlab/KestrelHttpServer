@@ -122,9 +122,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             {
                 Socket.Dispose();
 
-                // REVIEW: Who stops this?
-                // OutputChannel.Dispose();
-
                 Log.ConnectionStop(ConnectionId);
             }
         }

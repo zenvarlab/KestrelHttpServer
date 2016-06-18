@@ -189,6 +189,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 {
                     throw new InvalidOperationException("No recognized listening addresses were configured.");
                 }
+
+                _disposables.Push(connectionInitializer);
             }
             catch
             {

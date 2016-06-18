@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Http;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
-    public class ConnectionInitializer<TContext> : IConnectionInitializer
+    public class ConnectionInitializer<TContext> : IConnectionInitializer, IDisposable
     {
         private readonly IHttpApplication<TContext> _application;
 
@@ -21,6 +21,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         // for a roughly increasing _requestId over restarts
         private static long _lastConnectionId = DateTime.UtcNow.Ticks;
 
+        private List<Frame> _frames = new List<Frame>();
+
         public ConnectionInitializer(IHttpApplication<TContext> application)
         {
             _application = application;
@@ -31,6 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             var connectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
 
             var frame = new Frame<TContext>(_application, connectionInformation, serviceContext);
+            _frames.Add(frame);
 
             var inputChannel = new MemoryPoolChannel(serviceContext.Memory, serviceContext.ThreadPool);
             var outputChannel = new MemoryPoolChannel(serviceContext.Memory, serviceContext.ThreadPool);
@@ -75,13 +78,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             StartRequestProcessing(frame);
             return new ConnectionContext(connectionId, inputChannel, outputChannel);
         }
+
         private static async void StartRequestProcessing(Frame frame)
         {
             await frame.StartAsync();
-
-            // Once the frame unwinds dispose the channels
-            frame.InputChannel.Dispose();
-            frame.OutputChannel.Dispose();
         }
 
         private static unsafe string GenerateConnectionId(long id)
@@ -109,6 +109,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
             // string ctor overload that takes char*
             return new string(charBuffer, 0, 13);
+        }
+
+        public void Dispose()
+        {
+            var tasks = new Task[_frames.Count];
+
+            for (int i = 0; i < tasks.Length; i++)
+            {
+                var frame = _frames[i];
+                tasks[i] = frame.StopAsync();
+                frame.InputChannel.CompleteAwaiting();
+            }
+
+            Task.WaitAll(tasks);
         }
 
         private class ConnectionContext : IConnectionContext
