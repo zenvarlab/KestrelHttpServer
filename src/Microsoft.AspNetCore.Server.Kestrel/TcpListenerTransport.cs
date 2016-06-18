@@ -117,7 +117,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
             private async Task Process(IConnectionContext connectionContext, NetworkStream stream)
             {
-                await Task.WhenAny(ProcessReads(connectionContext, stream), ProcessWrites(connectionContext, stream));
+                await Task.WhenAll(ProcessReads(connectionContext, stream), ProcessWrites(connectionContext, stream));
             }
 
             private async Task ProcessReads(IConnectionContext context, NetworkStream stream)
