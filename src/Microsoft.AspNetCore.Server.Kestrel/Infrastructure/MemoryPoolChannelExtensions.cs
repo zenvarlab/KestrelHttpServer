@@ -4,7 +4,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Http
+namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
     public static class MemoryPoolChannelExtensions
     {

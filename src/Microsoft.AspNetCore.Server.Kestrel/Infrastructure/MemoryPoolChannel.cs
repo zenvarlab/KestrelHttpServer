@@ -6,9 +6,8 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
-namespace Microsoft.AspNetCore.Server.Kestrel.Http
+namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
     public class MemoryPoolChannel : ICriticalNotifyCompletion, IDisposable
     {
