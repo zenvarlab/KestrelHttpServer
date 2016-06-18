@@ -198,7 +198,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     // Aborted
                 }
 
-                _socket.Dispose();
+                stream.Dispose();
             }
 #endif
             public string ConnectionId { get; set; }
