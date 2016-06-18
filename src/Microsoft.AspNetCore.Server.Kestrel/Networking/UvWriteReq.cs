@@ -24,6 +24,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Networking
 
         private List<GCHandle> _pins = new List<GCHandle>(BUFFER_COUNT + 1);
 
+        private LibuvAwaitable<UvWriteReq> _awaitable = new LibuvAwaitable<UvWriteReq>();
+
         public UvWriteReq(IKestrelTrace logger) : base(logger)
         {
         }
@@ -37,6 +39,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Networking
                 loop.ThreadId,
                 requestSize + bufferSize);
             _bufs = handle + requestSize;
+        }
+
+        public unsafe LibuvAwaitable<UvWriteReq> Write(
+            UvStreamHandle handle,
+            MemoryPoolIterator start,
+            MemoryPoolIterator end,
+            int nBuffers)
+        {
+            Write(handle, start, end, nBuffers, LibuvAwaitable<UvWriteReq>.Callback, _awaitable);
+            return _awaitable;
         }
 
         public unsafe void Write(

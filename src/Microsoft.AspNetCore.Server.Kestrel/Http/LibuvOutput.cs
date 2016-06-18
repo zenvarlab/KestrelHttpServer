@@ -44,9 +44,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public async Task Start()
         {
-            // Reuse the awaiter
-            var awaitable = new LibuvAwaitable<UvWriteReq>();
-
             try
             {
                 while (!OutputChannel.Completed)
@@ -77,8 +74,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                     try
                     {
-                        req.Write(Socket, start, end, buffers, LibuvAwaitable<UvWriteReq>.Callback, awaitable);
-                        int status = await awaitable;
+                        int status = await req.Write(Socket, start, end, buffers);
                         Log.ConnectionWriteCallback(ConnectionId, status);
                     }
                     catch (Exception ex)
