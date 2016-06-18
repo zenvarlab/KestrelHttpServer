@@ -89,6 +89,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 transport.Initialize(connectionInitializer, serviceContext);
 
+                _disposables.Push(pool);
                 _disposables.Push(transport);
                 _disposables.Push(dateHeaderValueManager);
 

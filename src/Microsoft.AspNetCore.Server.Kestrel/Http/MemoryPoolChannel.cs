@@ -30,7 +30,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private LimitState _limitState;
         private readonly IThreadPool _threadPool;
 
-
         public MemoryPoolChannel(MemoryPool memory, IThreadPool threadPool, int threshold = 10 * 1024)
         {
             _memory = memory;
