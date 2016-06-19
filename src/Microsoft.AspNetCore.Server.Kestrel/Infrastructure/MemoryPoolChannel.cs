@@ -77,31 +77,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             return new MemoryPoolIterator(_tail, _tail.End);
         }
 
-        public Task WriteAsync(ArraySegment<byte> buffer)
-        {
-            return WriteAsync(buffer.Array, buffer.Offset, buffer.Count);
-        }
-
-        public Task WriteAsync(byte[] buffer, int offset, int count)
-        {
-            lock (_sync)
-            {
-                if (count > 0)
-                {
-                    var iterator = BeginWrite();
-                    iterator.CopyFrom(buffer, offset, count);
-                    return EndWriteAsync(iterator);
-                }
-                else
-                {
-                    // No more input
-                    Completed = true;
-                    Complete();
-                    return TaskUtilities.CompletedTask;
-                }
-            }
-        }
-
         public Task EndWriteAsync(MemoryPoolIterator end)
         {
             lock (_sync)

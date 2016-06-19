@@ -14,12 +14,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
     {
         private readonly static Task<int> _initialCachedTask = Task.FromResult(0);
 
-        private readonly MemoryPoolChannel _input;
-        private readonly MemoryPoolChannel _output;
+        private readonly IReadableChannel _input;
+        private readonly IWritableChannel _output;
 
         private Task<int> _cachedTask = _initialCachedTask;
 
-        public MemoryPoolChannelStream(MemoryPoolChannel input, MemoryPoolChannel output)
+        public MemoryPoolChannelStream(IReadableChannel input, IWritableChannel output)
         {
             _input = input;
             _output = output;
@@ -114,6 +114,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
         private ValueTask<int> ReadAsync(ArraySegment<byte> buffer)
         {
             return _input.ReadAsync(buffer.Array, buffer.Offset, buffer.Count);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _output.Close();
+            }
+
+            base.Dispose(disposing);
         }
     }
 }

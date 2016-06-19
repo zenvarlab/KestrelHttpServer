@@ -22,7 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         // for a roughly increasing _requestId over restarts
         private static long _lastConnectionId = DateTime.UtcNow.Ticks;
 
-        private List<Func<Task>> _stopFrame = new List<Func<Task>>();
+        private List<Frame> _frames = new List<Frame>();
 
         public ConnectionInitializer(IHttpApplication<TContext> application)
         {
@@ -42,13 +42,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             frame.InputChannel = inputChannel;
             frame.OutputChannel = outputChannel;
 
-            _stopFrame.Add(() =>
-            {
-                var task = frame.StopAsync();
-                inputChannel.CompleteAwaiting();
-                return task;
-            });
-
+            _frames.Add(frame);
 
             if (serviceContext.ServerOptions.ConnectionFilter == null)
             {
@@ -70,7 +64,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
             if (connectionFilterContext.Connection != stream)
             {
-                var streamConnection = new StreamConnection(
+                var streamConnection = new StreamChannelAdapter(
                     connectionId,
                     connectionFilterContext.Connection,
                     serviceContext.Memory,
@@ -87,9 +81,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             return new ConnectionContext(connectionId, inputChannel, outputChannel);
         }
 
-        private static async void StartRequestProcessing(Frame frame)
+        private static void StartRequestProcessing(Frame frame)
         {
-            await frame.StartAsync();
+            frame.StartAsync();
         }
 
         private static unsafe string GenerateConnectionId(long id)
@@ -121,12 +115,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public void Dispose()
         {
-            var tasks = new Task[_stopFrame.Count];
+            var tasks = new Task[_frames.Count];
 
             for (int i = 0; i < tasks.Length; i++)
             {
-                var frame = _stopFrame[i];
-                tasks[i] = frame();
+                var frame = _frames[i];
+                tasks[i] = frame.StopAsync();
+                ((MemoryPoolChannel)frame.InputChannel).CompleteAwaiting();
             }
 
             Task.WaitAll(tasks);

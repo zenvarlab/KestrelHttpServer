@@ -106,6 +106,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             return _inner.WriteAsync(buffer, offset, count, cancellationToken);
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Log("Dispose", 0, null, 0);
+                _inner.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
+
         private void Log(string method, int count, byte[] buffer, int offset)
         {
             var builder = new StringBuilder($"{method}[{count}] ");

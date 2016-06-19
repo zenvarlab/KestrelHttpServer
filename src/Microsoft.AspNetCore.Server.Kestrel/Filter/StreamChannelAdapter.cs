@@ -9,13 +9,13 @@ using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Filter
 {
-    public class StreamConnection : IDisposable
+    public class StreamChannelAdapter
     {
         private readonly string _connectionId;
         private readonly Stream _stream;
         private readonly IKestrelTrace _log;
 
-        public StreamConnection(
+        public StreamChannelAdapter(
             string connectionId,
             Stream stream,
             MemoryPool memory,
@@ -34,17 +34,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
 
         public MemoryPoolChannel OutputChannel { get; private set; }
 
-        public void Start()
+        public async void Start()
         {
             var reads = ReadFromStream();
             var writes = WriteToStream();
+
+            await Task.WhenAll(reads, writes);
+
+            _stream.Dispose();
         }
 
         private async Task ReadFromStream()
         {
             try
             {
-                // Read input from the stream
                 while (true)
                 {
                     var end = OutputChannel.BeginWrite();
@@ -56,6 +59,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
 
                         if (bytesRead == 0)
                         {
+                            OutputChannel.CompleteWriting();
                             break;
                         }
                         else
@@ -66,18 +70,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
                     }
                     catch (Exception error)
                     {
-                        // await OutputChannel.EndWriteAsync(end, error);
+                        OutputChannel.CompleteWriting(error);
+                        break;
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                OutputChannel.Cancel();
-                // _log.LogError(0, copyAsyncTask.Exception, "FilteredStreamAdapter.CopyToAsync");
+                OutputChannel.CompleteWriting(ex);
             }
             finally
             {
-                // OutputChannel.IncomingFin();
+
             }
         }
 
@@ -88,6 +92,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
                 while (!InputChannel.Completed)
                 {
                     await InputChannel;
+
+                    if (InputChannel.Completed)
+                    {
+                        break;
+                    }
 
                     var start = InputChannel.BeginRead();
                     var end = InputChannel.End();
@@ -127,12 +136,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             {
                 // TODO: Log
             }
-        }
 
-        public void Dispose()
-        {
-            InputChannel.Dispose();
-            OutputChannel.Dispose();
+            OutputChannel.Close();
         }
     }
 }
