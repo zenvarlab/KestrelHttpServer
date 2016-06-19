@@ -101,6 +101,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
                     var start = InputChannel.BeginRead();
                     var end = InputChannel.End();
 
+                    if (end.IsDefault)
+                    {
+                        break;
+                    }
+
                     try
                     {
                         var block = start.Block;

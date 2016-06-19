@@ -189,6 +189,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                         var start = context.OutputChannel.BeginRead();
                         var end = context.OutputChannel.End();
 
+                        if (end.IsDefault)
+                        {
+                            break;
+                        }
+
                         try
                         {
                             var block = start.Block;
