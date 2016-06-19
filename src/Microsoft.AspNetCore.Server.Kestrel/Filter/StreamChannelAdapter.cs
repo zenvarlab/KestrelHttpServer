@@ -101,14 +101,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
                     var start = InputChannel.BeginRead();
                     var end = InputChannel.End();
 
-                    if (end.IsDefault)
-                    {
-                        break;
-                    }
-
                     try
                     {
                         var block = start.Block;
+
+                        if (end.IsDefault)
+                        {
+                            continue;
+                        }
 
                         while (true)
                         {
@@ -142,7 +142,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
                 // TODO: Log
             }
 
-            OutputChannel.Close();
+            OutputChannel.CompleteWriting();
         }
     }
 }

@@ -169,8 +169,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 {
 
                 }
-
-                context.InputChannel.Close();
             }
 
             private async Task ProcessWrites(IConnectionContext context, NetworkStream stream)
@@ -189,14 +187,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                         var start = context.OutputChannel.BeginRead();
                         var end = context.OutputChannel.End();
 
-                        if (end.IsDefault)
-                        {
-                            break;
-                        }
-
                         try
                         {
                             var block = start.Block;
+
+                            if (end.IsDefault)
+                            {
+                                continue;
+                            }
 
                             while (true)
                             {
@@ -231,6 +229,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 }
 
                 _socket.Close();
+
+                context.OutputChannel.Close();
             }
 #endif
             public string ConnectionId { get; set; }

@@ -18,5 +18,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
         MemoryPoolIterator BeginRead();
         void EndRead(MemoryPoolIterator consumed, MemoryPoolIterator examined);
         MemoryPoolIterator End();
+
+        void Close();
     }
 }

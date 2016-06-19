@@ -171,7 +171,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     ServiceContext.Log.LogWarning(0, ex, "Connection shutdown abnormally");
                 }
 
-                OutputChannel.Close();
+                InputChannel.Close();
             }
         }
     }

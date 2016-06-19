@@ -345,7 +345,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 try
                 {
-                    OutputChannel.Close();
+                    OutputChannel.CompleteWriting();
                 }
                 catch (Exception ex)
                 {

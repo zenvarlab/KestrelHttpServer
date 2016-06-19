@@ -120,7 +120,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
         {
             if (disposing)
             {
-                _output.Close();
+                _output.CompleteWriting();
             }
 
             base.Dispose(disposing);

@@ -11,7 +11,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
         Task EndWriteAsync(MemoryPoolIterator end);
 
         void CompleteWriting(Exception error = null);
-
-        void Close();
     }
 }
