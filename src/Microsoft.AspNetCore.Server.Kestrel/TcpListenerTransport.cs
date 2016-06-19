@@ -181,6 +181,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     {
                         await context.OutputChannel;
 
+                        if (context.OutputChannel.Completed)
+                        {
+                            break;
+                        }
+
                         var start = context.OutputChannel.BeginRead();
                         var end = context.OutputChannel.End();
 
