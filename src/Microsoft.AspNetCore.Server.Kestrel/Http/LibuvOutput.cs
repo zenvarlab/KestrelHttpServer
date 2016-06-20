@@ -58,6 +58,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         break;
                     }
 
+                    if (OutputChannel.Completed)
+                    {
+                        break;
+                    }
+
                     var start = OutputChannel.BeginRead();
                     var end = OutputChannel.End();
 
@@ -110,9 +115,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     }
 
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // TODO: Log
+                    Log.ConnectionError(ConnectionId, ex);
                 }
 
                 Socket.Dispose();

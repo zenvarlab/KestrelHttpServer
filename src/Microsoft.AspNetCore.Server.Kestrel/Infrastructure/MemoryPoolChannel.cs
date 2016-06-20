@@ -74,7 +74,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
         public MemoryPoolIterator End()
         {
-            return new MemoryPoolIterator(_tail, _tail.End);
+            return new MemoryPoolIterator(_tail, _tail?.End ?? 0);
         }
 
         public Task EndWriteAsync(MemoryPoolIterator end)

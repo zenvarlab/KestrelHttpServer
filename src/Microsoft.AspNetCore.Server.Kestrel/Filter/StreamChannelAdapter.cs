@@ -141,8 +141,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             {
                 // TODO: Log
             }
-
-            OutputChannel.CompleteWriting();
         }
     }
 }
