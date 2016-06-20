@@ -47,7 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             var inputTask = input.Start();
             var outputTask = output.Start();
 
-            await Task.WhenAll(inputTask, outputTask);
+            await outputTask;
         }
 
         public Task StopAsync()

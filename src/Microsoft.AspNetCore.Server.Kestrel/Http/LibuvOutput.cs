@@ -50,11 +50,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     await OutputChannel;
 
-                    if (OutputChannel.Completed)
-                    {
-                        break;
-                    }
-
                     // Switch to the UV thread
                     await LibuvThread;
 
@@ -93,23 +88,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             catch (TaskCanceledException)
             {
+
+            }
+            finally
+            {
                 await LibuvThread;
 
                 try
                 {
-                    if (Socket.IsClosed)
+                    if (!Socket.IsClosed)
                     {
-                        return;
-                    }
+                        var shutdownAwaitable = new LibuvAwaitable<UvShutdownReq>();
+                        using (var shutdownReq = new UvShutdownReq(Log))
+                        {
+                            shutdownReq.Init(LibuvThread.Loop);
+                            shutdownReq.Shutdown(Socket, LibuvAwaitable<UvShutdownReq>.Callback, shutdownAwaitable);
+                            int status = await shutdownAwaitable;
 
-                    var shutdownAwaitable = new LibuvAwaitable<UvShutdownReq>();
-                    using (var shutdownReq = new UvShutdownReq(Log))
-                    {
-                        shutdownReq.Init(LibuvThread.Loop);
-                        shutdownReq.Shutdown(Socket, LibuvAwaitable<UvShutdownReq>.Callback, shutdownAwaitable);
-                        int status = await shutdownAwaitable;
-
-                        Log.ConnectionWroteFin(ConnectionId, status);
+                            Log.ConnectionWroteFin(ConnectionId, status);
+                        }
                     }
 
                 }
@@ -117,9 +114,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     // TODO: Log
                 }
-            }
-            finally
-            {
+
                 Socket.Dispose();
 
                 OutputChannel.Close();

@@ -146,10 +146,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 disposeTasks.Add(listener.DisposeAsync());
             }
 
-            if (!Task.WhenAll(disposeTasks).Wait(ServerOptions.ShutdownTimeout))
-            {
-                Log.NotAllConnectionsClosedGracefully();
-            }
+            // TODO: Add timeouts back
+            Task.WhenAll(disposeTasks).Wait();
         }
     }
 }
