@@ -14,8 +14,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private MemoryPoolIterator _iterator;
 
-        private TaskCompletionSource<object> _tcs;
-
         public LibuvInput(
             LibuvThread libuvThread,
             UvStreamHandle socket,
@@ -44,15 +42,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public string ConnectionId { get; private set; }
 
-        public Task Start()
+        public void Start()
         {
-            if (_tcs != null)
-            {
-                return _tcs.Task;
-            }
-            _tcs = new TaskCompletionSource<object>();
             Resume();
-            return _tcs.Task;
         }
 
         private void Resume()
@@ -123,7 +115,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             if (readCount == 0)
             {
                 InputChannel.CompleteWriting();
-                _tcs.TrySetResult(null);
             }
 
             _iterator = default(MemoryPoolIterator);
@@ -131,7 +122,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             if (errorDone)
             {
                 InputChannel.CompleteWriting(error);
-                _tcs.TrySetException(error);
             }
             else
             {

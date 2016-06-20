@@ -44,10 +44,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             var input = new LibuvInput(LibuvThread, _socket, context.InputChannel, context.ConnectionId, Log, ThreadPool);
             var output = new LibuvOutput(LibuvThread, _socket, context.OutputChannel, context.ConnectionId, Log, ThreadPool, WriteReqPool);
 
-            var inputTask = input.Start();
-            var outputTask = output.Start();
-
-            await outputTask;
+            input.Start();
+            await output.Start();
         }
 
         public Task StopAsync()
