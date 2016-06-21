@@ -46,7 +46,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             try
             {
-                while (!OutputChannel.Completed)
+                while (!OutputChannel.CompletedConsuming)
                 {
                     await OutputChannel;
 
@@ -58,7 +58,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         break;
                     }
 
-                    if (OutputChannel.Completed)
+                    if (OutputChannel.CompletedConsuming)
                     {
                         break;
                     }

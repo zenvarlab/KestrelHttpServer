@@ -37,7 +37,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             _threadPool = threadPool;
         }
 
-        public bool Completed { get; set; }
+        public bool CompletedConsuming { get; set; }
 
         public bool IsCompleted => ReferenceEquals(_awaitableState, _awaitableIsCompleted);
 
@@ -164,7 +164,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
                 if (!examined.IsDefault &&
                     examined.IsEnd &&
-                    Completed == false &&
+                    CompletedConsuming == false &&
                     _awaitableError == null)
                 {
                     _manualResetEvent.Reset();
@@ -196,7 +196,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
         public void CompleteWriting(Exception error = null)
         {
-            Completed = true;
+            CompletedConsuming = true;
 
             lock (_sync)
             {

@@ -175,11 +175,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             {
                 try
                 {
-                    while (!context.OutputChannel.Completed)
+                    while (!context.OutputChannel.CompletedConsuming)
                     {
                         await context.OutputChannel;
 
-                        if (context.OutputChannel.Completed)
+                        if (context.OutputChannel.CompletedConsuming)
                         {
                             break;
                         }

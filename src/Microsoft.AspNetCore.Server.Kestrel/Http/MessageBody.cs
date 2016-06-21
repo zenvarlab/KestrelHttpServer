@@ -240,7 +240,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     while (_mode == Mode.Prefix)
                     {
-                        var fin = input.Completed;
+                        var fin = input.CompletedConsuming;
 
                         ParseChunkedPrefix(input);
 
@@ -258,7 +258,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                     while (_mode == Mode.Extension)
                     {
-                        var fin = input.Completed;
+                        var fin = input.CompletedConsuming;
 
                         ParseExtension(input);
 
@@ -276,7 +276,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                     while (_mode == Mode.Data)
                     {
-                        var fin = input.Completed;
+                        var fin = input.CompletedConsuming;
 
                         int actual = ReadChunkedData(input, buffer.Array, buffer.Offset, buffer.Count);
 
@@ -298,7 +298,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                     while (_mode == Mode.Suffix)
                     {
-                        var fin = input.Completed;
+                        var fin = input.CompletedConsuming;
 
                         ParseChunkedSuffix(input);
 
@@ -318,7 +318,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 // Chunks finished, parse trailers
                 while (_mode == Mode.Trailer)
                 {
-                    var fin = input.Completed;
+                    var fin = input.CompletedConsuming;
 
                     ParseChunkedTrailer(input);
 
@@ -338,7 +338,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     while (!_context.TakeMessageHeaders(input, _requestHeaders))
                     {
-                        if (input.Completed)
+                        if (input.CompletedConsuming)
                         {
                             if (_context.TakeMessageHeaders(input, _requestHeaders))
                             {

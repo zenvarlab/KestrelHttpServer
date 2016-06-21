@@ -14,7 +14,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
         void GetResult();
         IReadableChannel GetAwaiter();
 
-        bool Completed { get; }
+        bool CompletedConsuming { get; }
         MemoryPoolIterator BeginRead();
         void EndRead(MemoryPoolIterator consumed, MemoryPoolIterator examined);
         MemoryPoolIterator End();
