@@ -98,8 +98,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
                         break;
                     }
 
-                    var start = InputChannel.BeginRead();
-                    var end = InputChannel.End();
+                    var span = InputChannel.BeginRead();
+                    var start = span.Begin;
+                    var end = span.End;
 
                     try
                     {

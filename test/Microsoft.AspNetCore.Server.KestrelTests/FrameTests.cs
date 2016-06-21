@@ -49,7 +49,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 Assert.Equal(numHeaders, headerCollection.Count());
 
                 // Assert TakeMessageHeaders consumed all the input
-                var scan = socketInput.BeginRead();
+                var scan = socketInput.BeginRead().Begin;
                 Assert.True(scan.IsEnd);
             }
         }

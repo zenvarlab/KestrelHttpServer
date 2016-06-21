@@ -63,8 +63,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         break;
                     }
 
-                    var start = OutputChannel.BeginRead();
-                    var end = OutputChannel.End();
+                    var span = OutputChannel.BeginRead();
+                    var start = span.Begin;
+                    var end = span.End;
 
                     int bytes;
                     int buffers;

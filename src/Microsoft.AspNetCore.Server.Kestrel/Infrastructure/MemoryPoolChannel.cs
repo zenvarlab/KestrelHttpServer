@@ -72,11 +72,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             }
         }
 
-        public MemoryPoolIterator End()
-        {
-            return new MemoryPoolIterator(_tail, _tail?.End ?? 0);
-        }
-
         public Task EndWriteAsync(MemoryPoolIterator end)
         {
             lock (_sync)
@@ -117,14 +112,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             }
         }
 
-        public MemoryPoolIterator BeginRead()
+        public MemoryPoolSpan BeginRead()
         {
             if (Interlocked.CompareExchange(ref _consumingState, 1, 0) != 0)
             {
                 throw new InvalidOperationException("Already consuming input.");
             }
 
-            return new MemoryPoolIterator(_head);
+            var start = new MemoryPoolIterator(_head);
+            var end = new MemoryPoolIterator(_tail, _tail?.End ?? 0);
+            return new MemoryPoolSpan(start, end);
         }
 
         public void EndRead(MemoryPoolIterator end)

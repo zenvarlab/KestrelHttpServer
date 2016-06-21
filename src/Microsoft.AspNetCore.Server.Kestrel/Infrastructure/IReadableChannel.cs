@@ -15,10 +15,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
         IReadableChannel GetAwaiter();
 
         bool CompletedConsuming { get; }
-        MemoryPoolIterator BeginRead();
+        MemoryPoolSpan BeginRead();
         void EndRead(MemoryPoolIterator consumed, MemoryPoolIterator examined);
-        MemoryPoolIterator End();
 
         void Close();
+    }
+
+    public struct MemoryPoolSpan
+    {
+        public MemoryPoolIterator Begin { get; private set; }
+        public MemoryPoolIterator End { get; private set; }
+
+        public MemoryPoolSpan(MemoryPoolIterator begin, MemoryPoolIterator end)
+        {
+            Begin = begin;
+            End = end;
+        }
     }
 }

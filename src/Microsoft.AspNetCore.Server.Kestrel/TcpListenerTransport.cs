@@ -184,8 +184,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                             break;
                         }
 
-                        var start = context.OutputChannel.BeginRead();
-                        var end = context.OutputChannel.End();
+                        var span = context.OutputChannel.BeginRead();
+                        var start = span.Begin;
+                        var end = span.End;
 
                         try
                         {

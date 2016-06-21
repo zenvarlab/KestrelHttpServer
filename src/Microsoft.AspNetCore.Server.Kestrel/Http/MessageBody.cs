@@ -361,7 +361,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             private void ParseChunkedPrefix(IReadableChannel input)
             {
-                var scan = input.BeginRead();
+                var scan = input.BeginRead().Begin;
                 var consumed = scan;
                 try
                 {
@@ -421,7 +421,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             private void ParseExtension(IReadableChannel input)
             {
-                var scan = input.BeginRead();
+                var scan = input.BeginRead().Begin;
                 var consumed = scan;
                 try
                 {
@@ -465,7 +465,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             private int ReadChunkedData(IReadableChannel input, byte[] buffer, int offset, int count)
             {
-                var scan = input.BeginRead();
+                var scan = input.BeginRead().Begin;
                 int actual;
                 try
                 {
@@ -488,7 +488,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             private void ParseChunkedSuffix(IReadableChannel input)
             {
-                var scan = input.BeginRead();
+                var scan = input.BeginRead().Begin;
                 var consumed = scan;
                 try
                 {
@@ -516,7 +516,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             private void ParseChunkedTrailer(IReadableChannel input)
             {
-                var scan = input.BeginRead();
+                var scan = input.BeginRead().Begin;
                 var consumed = scan;
                 try
                 {

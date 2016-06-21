@@ -805,7 +805,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         protected RequestLineStatus TakeStartLine(IReadableChannel input)
         {
-            var scan = input.BeginRead();
+            var scan = input.BeginRead().Begin;
             var consumed = scan;
 
             try
@@ -985,7 +985,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public bool TakeMessageHeaders(IReadableChannel input, FrameRequestHeaders requestHeaders)
         {
-            var scan = input.BeginRead();
+            var scan = input.BeginRead().Begin;
             var consumed = scan;
             try
             {

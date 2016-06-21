@@ -34,7 +34,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             {
                 var fin = input.CompletedConsuming;
 
-                var begin = input.BeginRead();
+                var begin = input.BeginRead().Begin;
                 int actual;
                 var end = begin.CopyTo(buffer, offset, count, out actual);
                 input.EndRead(end);
@@ -60,7 +60,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
                 var fin = input.CompletedConsuming;
 
-                var begin = input.BeginRead();
+                var begin = input.BeginRead().Begin;
                 int actual;
                 var end = begin.CopyTo(buffer, offset, count, out actual);
                 input.EndRead(end);
