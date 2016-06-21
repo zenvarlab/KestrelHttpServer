@@ -106,6 +106,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         var shutdownAwaitable = new LibuvAwaitable<UvShutdownReq>();
                         using (var shutdownReq = new UvShutdownReq(Log))
                         {
+                            Log.ConnectionWriteFin(ConnectionId);
                             shutdownReq.Init(LibuvThread.Loop);
                             shutdownReq.Shutdown(Socket, LibuvAwaitable<UvShutdownReq>.Callback, shutdownAwaitable);
                             int status = await shutdownAwaitable;
