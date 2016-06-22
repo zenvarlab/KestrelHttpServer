@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
             if (send100Continue == 1)
             {
-                _context.FrameControl.ProduceContinue();
+                _context.ProduceContinue();
             }
             return result;
         }
@@ -50,7 +50,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     {
                         if (Interlocked.Exchange(ref _send100Continue, 0) == 1)
                         {
-                            _context.FrameControl.ProduceContinue();
+                            _context.ProduceContinue();
                         }
                         send100checked = true;
                     }

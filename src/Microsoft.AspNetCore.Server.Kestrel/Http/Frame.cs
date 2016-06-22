@@ -81,7 +81,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ConnectionInformation = connectionInformation;
             ServiceContext = serviceContext;
 
-            FrameControl = this;
             Reset();
         }
 

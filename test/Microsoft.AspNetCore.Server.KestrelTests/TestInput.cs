@@ -24,7 +24,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 //DateHeaderValueManager = new DateHeaderValueManager(),
                 //ServerAddress = ServerAddress.FromUrl("http://localhost:5000"),
                 //ConnectionControl = this,
-                FrameControl = this
+                // FrameControl = this
             };
             FrameContext = context;
 
