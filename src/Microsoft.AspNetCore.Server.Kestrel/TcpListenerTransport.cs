@@ -175,11 +175,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             {
                 try
                 {
-                    while (!context.OutputChannel.CompletedConsuming)
+                    while (!context.OutputChannel.Completed)
                     {
                         await context.OutputChannel;
 
-                        if (context.OutputChannel.CompletedConsuming)
+                        if (context.OutputChannel.Completed)
                         {
                             break;
                         }
@@ -231,7 +231,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 _socket.Close();
 
-                context.OutputChannel.Close();
+                context.OutputChannel.CompleteReading();
             }
 #endif
             public string ConnectionId { get; set; }

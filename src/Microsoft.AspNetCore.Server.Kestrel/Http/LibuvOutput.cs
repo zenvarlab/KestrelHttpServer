@@ -46,7 +46,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             try
             {
-                while (!OutputChannel.CompletedConsuming)
+                while (!OutputChannel.Completed)
                 {
                     await OutputChannel;
 
@@ -58,7 +58,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         break;
                     }
 
-                    if (OutputChannel.CompletedConsuming)
+                    if (OutputChannel.Completed)
                     {
                         break;
                     }
@@ -124,7 +124,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 Socket.Dispose();
 
-                OutputChannel.Close();
+                OutputChannel.CompleteReading();
 
                 Log.ConnectionStop(ConnectionId);
             }

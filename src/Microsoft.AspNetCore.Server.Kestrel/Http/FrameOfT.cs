@@ -33,7 +33,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 {
                     while (!_requestProcessingStopping && TakeStartLine(InputChannel) != RequestLineStatus.Done)
                     {
-                        if (InputChannel.CompletedConsuming)
+                        if (InputChannel.Completed)
                         {
                             // We need to attempt to consume start lines and headers even after
                             // InputChannel.Completed is set to true to ensure we don't close a
@@ -61,7 +61,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                     while (!_requestProcessingStopping && !TakeMessageHeaders(InputChannel, FrameRequestHeaders))
                     {
-                        if (InputChannel.CompletedConsuming)
+                        if (InputChannel.Completed)
                         {
                             // We need to attempt to consume start lines and headers even after
                             // FrameInputChannel.Completed is set to true to ensure we don't close a
@@ -171,7 +171,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     ServiceContext.Log.LogWarning(0, ex, "Connection shutdown abnormally");
                 }
 
-                InputChannel.Close();
+                InputChannel.CompleteReading();
             }
         }
     }

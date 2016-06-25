@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -23,6 +24,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
         private MemoryPoolBlock _head;
         private MemoryPoolBlock _tail;
 
+        private bool _completedWriting;
+        private bool _completedReading;
+
         private int _consumingState;
         private object _sync = new object();
         private readonly int _threshold;
@@ -37,7 +41,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             _threadPool = threadPool;
         }
 
-        public bool CompletedConsuming { get; set; }
+        public bool Completed => _completedWriting;
 
         public bool IsCompleted => ReferenceEquals(_awaitableState, _awaitableIsCompleted);
 
@@ -161,7 +165,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
                 if (!examined.IsDefault &&
                     examined.IsEnd &&
-                    CompletedConsuming == false &&
+                    Completed == false &&
                     _awaitableError == null)
                 {
                     _manualResetEvent.Reset();
@@ -193,16 +197,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
         public void CompleteWriting(Exception error = null)
         {
-            CompletedConsuming = true;
-
             lock (_sync)
             {
+                _completedWriting = true;
+
                 if (error != null)
                 {
                     _awaitableError = error;
                 }
 
                 Complete();
+
+                if (_completedReading)
+                {
+                    Dispose();
+                }
+            }
+        }
+
+        public void CompleteReading()
+        {
+            lock (_sync)
+            {
+                _completedReading = true;
+
+                if (_completedWriting)
+                {
+                    Dispose();
+                }
             }
         }
 
@@ -271,27 +293,26 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             }
         }
 
-        public void Close()
-        {
-            Dispose();
-        }
-
         public void Dispose()
         {
-            Cancel();
+            Debug.Assert(_completedWriting, "Not completed writing");
+            Debug.Assert(_completedReading, "Not completed reading");
 
-            // Return all blocks
-            var block = _head;
-            while (block != null)
+            lock (_sync)
             {
-                var returnBlock = block;
-                block = block.Next;
+                // Return all blocks
+                var block = _head;
+                while (block != null)
+                {
+                    var returnBlock = block;
+                    block = block.Next;
 
-                returnBlock.Pool.Return(returnBlock);
+                    returnBlock.Pool.Return(returnBlock);
+                }
+
+                _head = null;
+                _tail = null;
             }
-
-            _head = null;
-            _tail = null;
         }
 
         private class LimitState

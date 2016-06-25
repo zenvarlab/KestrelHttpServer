@@ -89,11 +89,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
         {
             try
             {
-                while (!InputChannel.CompletedConsuming)
+                while (!InputChannel.Completed)
                 {
                     await InputChannel;
 
-                    if (InputChannel.CompletedConsuming)
+                    if (InputChannel.Completed)
                     {
                         break;
                     }

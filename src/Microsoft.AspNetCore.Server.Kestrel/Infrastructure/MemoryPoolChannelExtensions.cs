@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
         {
             while (input.IsCompleted)
             {
-                var fin = input.CompletedConsuming;
+                var fin = input.Completed;
 
                 var begin = input.BeginRead().Begin;
                 int actual;
@@ -58,7 +58,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             {
                 await input;
 
-                var fin = input.CompletedConsuming;
+                var fin = input.Completed;
 
                 var begin = input.BeginRead().Begin;
                 int actual;
