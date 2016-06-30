@@ -81,13 +81,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 }
             }
 
-            private async void StartConnectionAsync(ServerAddress address, Socket socket)
+            private void StartConnectionAsync(ServerAddress address, Socket socket)
             {
                 var connection = new SocketConnection(socket, _cts.Token);
                 connection.ServerAddress = address;
                 connection.RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
                 connection.LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
-                var connectionContext = await _initializer.StartConnectionAync(connection, _serviceContext);
+                var connectionContext = _initializer.StartConnection(connection, _serviceContext);
                 _connections.Add(connection.Start(connectionContext));
             }
 

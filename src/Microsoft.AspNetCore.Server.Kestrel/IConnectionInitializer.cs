@@ -4,6 +4,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 {
     public interface IConnectionInitializer
     {
-        Task<IConnectionContext> StartConnectionAync(IConnectionInformation connectionInformation, ServiceContext serviceContext);
+        IConnectionContext StartConnection(IConnectionInformation connectionInformation, ServiceContext serviceContext);
     }
 }

@@ -29,56 +29,64 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             _application = application;
         }
 
-        public async Task<IConnectionContext> StartConnectionAync(IConnectionInformation connectionInformation, ServiceContext serviceContext)
+        public IConnectionContext StartConnection(IConnectionInformation connectionInformation, ServiceContext serviceContext)
         {
             var connectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
-
-            var frame = new Frame<TContext>(_application, connectionInformation, serviceContext);
 
             var inputChannel = new MemoryPoolChannel(serviceContext.Memory, serviceContext.ThreadPool);
             var outputChannel = new MemoryPoolChannel(serviceContext.Memory, serviceContext.ThreadPool);
 
-            frame.ConnectionId = connectionId;
-            frame.InputChannel = inputChannel;
-            frame.OutputChannel = outputChannel;
+            var connectionContext = new ConnectionContext(connectionId, inputChannel, outputChannel);
+
+            StartProcessingRequests(connectionInformation, connectionContext.ConnectionId, serviceContext, inputChannel, outputChannel);
+
+            return connectionContext;
+        }
+
+        public async void StartProcessingRequests(IConnectionInformation connectionInformation, string connectionId, ServiceContext serviceContext, MemoryPoolChannel inputChannel, MemoryPoolChannel outputChannel)
+        {
+            var frame = new Frame<TContext>(_application, connectionInformation, serviceContext);
 
             _frames.Add(frame);
 
+            frame.ConnectionId = connectionId;
+
             if (serviceContext.ServerOptions.ConnectionFilter == null)
             {
-                StartRequestProcessing(frame);
-                return new ConnectionContext(connectionId, inputChannel, outputChannel);
+                frame.InputChannel = inputChannel;
+                frame.OutputChannel = outputChannel;
             }
-
-            var stream = new MemoryPoolChannelStream(inputChannel, outputChannel);
-
-            var connectionFilterContext = new ConnectionFilterContext
+            else
             {
-                Connection = stream,
-                Address = connectionInformation.ServerAddress
-            };
+                var stream = new MemoryPoolChannelStream(inputChannel, outputChannel);
 
-            await serviceContext.ServerOptions.ConnectionFilter.OnConnectionAsync(connectionFilterContext);
+                var connectionFilterContext = new ConnectionFilterContext
+                {
+                    Connection = stream,
+                    Address = connectionInformation.ServerAddress
+                };
 
-            frame.PrepareRequest = connectionFilterContext.PrepareRequest;
+                await serviceContext.ServerOptions.ConnectionFilter.OnConnectionAsync(connectionFilterContext);
 
-            if (connectionFilterContext.Connection != stream)
-            {
-                var streamConnection = new StreamChannelAdapter(
-                    connectionId,
-                    connectionFilterContext.Connection,
-                    serviceContext.Memory,
-                    serviceContext.Log,
-                    serviceContext.ThreadPool);
+                frame.PrepareRequest = connectionFilterContext.PrepareRequest;
 
-                frame.OutputChannel = streamConnection.InputChannel;
-                frame.InputChannel = streamConnection.OutputChannel;
+                if (connectionFilterContext.Connection != stream)
+                {
+                    var streamConnection = new StreamChannelAdapter(
+                        connectionId,
+                        connectionFilterContext.Connection,
+                        serviceContext.Memory,
+                        serviceContext.Log,
+                        serviceContext.ThreadPool);
 
-                streamConnection.Start();
+                    frame.OutputChannel = streamConnection.InputChannel;
+                    frame.InputChannel = streamConnection.OutputChannel;
+
+                    streamConnection.Start();
+                }
             }
 
             StartRequestProcessing(frame);
-            return new ConnectionContext(connectionId, inputChannel, outputChannel);
         }
 
         private static void StartRequestProcessing(Frame frame)
