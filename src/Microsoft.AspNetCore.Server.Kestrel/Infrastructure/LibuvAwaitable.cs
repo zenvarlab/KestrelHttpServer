@@ -43,6 +43,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             // Reset the awaitable state
             _exception = null;
             _status = 0;
+            _callback = null;
 
             if (exception != null)
             {
