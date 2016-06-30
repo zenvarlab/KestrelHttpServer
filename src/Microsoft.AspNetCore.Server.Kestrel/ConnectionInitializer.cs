@@ -50,13 +50,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             _frames.Add(frame);
 
             frame.ConnectionId = connectionId;
+            frame.InputChannel = inputChannel;
+            frame.OutputChannel = outputChannel;
 
-            if (serviceContext.ServerOptions.ConnectionFilter == null)
-            {
-                frame.InputChannel = inputChannel;
-                frame.OutputChannel = outputChannel;
-            }
-            else
+            if (serviceContext.ServerOptions.ConnectionFilter != null)
             {
                 var stream = new MemoryPoolChannelStream(inputChannel, outputChannel);
 
