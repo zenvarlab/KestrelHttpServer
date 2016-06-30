@@ -14,6 +14,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private MemoryPoolIterator _iterator;
 
+        private const int MinimumSize = 2048;
+
         public LibuvInput(
             LibuvThread libuvThread,
             UvStreamHandle socket,
@@ -65,7 +67,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
-            _iterator = InputChannel.BeginWrite();
+            _iterator = InputChannel.BeginWrite(MinimumSize);
             var result = _iterator.Block;
 
             return handle.Libuv.buf_init(

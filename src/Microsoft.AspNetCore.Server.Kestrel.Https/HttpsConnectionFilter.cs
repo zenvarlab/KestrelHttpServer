@@ -38,7 +38,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Https
         {
             await _previous.OnConnectionAsync(context);
 
-            if (string.Equals(context.Address.Scheme, "https", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(context.ConnectionInformation.ServerAddress.Scheme, "https", StringComparison.OrdinalIgnoreCase))
             {
                 SslStream sslStream;
                 if (_options.ClientCertificateMode == ClientCertificateMode.NoCertificate)

@@ -45,17 +45,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
         public bool IsCompleted => ReferenceEquals(_awaitableState, _awaitableIsCompleted);
 
-        public MemoryPoolIterator BeginWrite()
+        public MemoryPoolIterator BeginWrite(int minimumSize = 0)
         {
-            const int minimumSize = 2048;
-
             MemoryPoolBlock block = null;
 
-            if (_tail != null && minimumSize <= _tail.Data.Offset + _tail.Data.Count - _tail.End)
+            if (_tail != null)
             {
-                block = _tail;
+                int remaining = _tail.Data.Offset + _tail.Data.Count - _tail.End;
+
+                if (minimumSize <= remaining && remaining > 0)
+                {
+                    block = _tail;
+                }
             }
-            else
+
+            if (block == null)
             {
                 block = _memory.Lease();
             }

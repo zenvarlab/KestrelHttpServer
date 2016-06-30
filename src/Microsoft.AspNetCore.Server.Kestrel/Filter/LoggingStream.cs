@@ -12,11 +12,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
     internal class LoggingStream : Stream
     {
         private readonly Stream _inner;
+        private readonly string _connectionId;
         private readonly ILogger _logger;
 
-        public LoggingStream(Stream inner, ILogger logger)
+        public LoggingStream(Stream inner, string connectionId, ILogger logger)
         {
             _inner = inner;
+            _connectionId = connectionId;
             _logger = logger;
         }
 
@@ -119,7 +121,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
 
         private void Log(string method, int count, byte[] buffer, int offset)
         {
-            var builder = new StringBuilder($"{method}[{count}] ");
+            var builder = new StringBuilder($"[{_connectionId}]: {method}[{count}] ");
 
             // Write the hex
             for (int i = offset; i < offset + count; i++)

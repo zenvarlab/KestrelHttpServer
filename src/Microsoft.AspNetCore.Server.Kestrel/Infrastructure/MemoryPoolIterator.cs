@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Numerics;
+using System.Text;
 using System.Threading;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
@@ -851,6 +852,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             block.End = blockIndex;
             _block = block;
             _index = blockIndex;
+        }
+
+        public override string ToString()
+        {
+            return Encoding.ASCII.GetString(Block.Array, Block.Start + Index, Block.End - Block.Start + Index);
         }
     }
 }

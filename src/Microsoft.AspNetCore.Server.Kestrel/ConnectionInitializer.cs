@@ -59,8 +59,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 var connectionFilterContext = new ConnectionFilterContext
                 {
+                    ConnectionId = connectionId,
                     Connection = stream,
-                    Address = connectionInformation.ServerAddress
+                    ConnectionInformation = connectionInformation
                 };
 
                 await serviceContext.ServerOptions.ConnectionFilter.OnConnectionAsync(connectionFilterContext);

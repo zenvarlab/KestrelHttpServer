@@ -31,7 +31,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
         {
             await _previous.OnConnectionAsync(context);
 
-            context.Connection = new LoggingStream(context.Connection, _logger);
+            context.Connection = new LoggingStream(context.Connection, context.ConnectionId, _logger);
         }
     }
 }

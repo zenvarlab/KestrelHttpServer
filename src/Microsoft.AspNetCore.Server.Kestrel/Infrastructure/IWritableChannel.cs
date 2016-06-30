@@ -7,7 +7,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
     public interface IWritableChannel
     {
-        MemoryPoolIterator BeginWrite();
+        MemoryPoolIterator BeginWrite(int minimumSize = 0);
         Task EndWriteAsync(MemoryPoolIterator end);
 
         void CompleteWriting(Exception error = null);
