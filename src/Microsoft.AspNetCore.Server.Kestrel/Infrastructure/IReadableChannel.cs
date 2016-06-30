@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
+﻿using System.Runtime.CompilerServices;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
@@ -20,17 +16,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
         void EndRead(MemoryPoolIterator consumed, MemoryPoolIterator examined);
 
         void CompleteReading();
-    }
-
-    public struct MemoryPoolSpan
-    {
-        public MemoryPoolIterator Begin { get; private set; }
-        public MemoryPoolIterator End { get; private set; }
-
-        public MemoryPoolSpan(MemoryPoolIterator begin, MemoryPoolIterator end)
-        {
-            Begin = begin;
-            End = end;
-        }
     }
 }

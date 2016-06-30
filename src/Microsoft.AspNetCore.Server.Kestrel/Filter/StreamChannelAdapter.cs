@@ -4,7 +4,6 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Filter
@@ -39,9 +38,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             var reads = ReadFromStream();
             var writes = WriteToStream();
 
-            await Task.WhenAll(reads, writes);
+            await writes;
 
             _stream.Dispose();
+
+            OutputChannel.CompleteWriting();
         }
 
         private async Task ReadFromStream()
@@ -142,6 +143,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
             {
                 // TODO: Log
             }
+
+            InputChannel.CompleteReading();
         }
     }
 }
