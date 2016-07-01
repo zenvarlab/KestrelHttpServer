@@ -51,8 +51,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         {
             var frame = new Frame<TContext>(_application, connectionInformation, _serviceContext);
 
-            _frames.Add(frame);
-
             frame.ConnectionId = connectionId;
             frame.InputChannel = inputChannel;
             frame.OutputChannel = outputChannel;
@@ -88,12 +86,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 }
             }
 
-            StartRequestProcessing(frame);
-        }
+            // PERF: locks...
+            lock (_frames)
+            {
+                _frames.Add(frame);
+            }
 
-        private static void StartRequestProcessing(Frame frame)
-        {
-            frame.StartAsync();
+            await frame.StartAsync();
+
+            lock (_frames)
+            {
+                _frames.Remove(frame);
+            }
         }
 
         private static unsafe string GenerateConnectionId(long id)

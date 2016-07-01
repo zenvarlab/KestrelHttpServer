@@ -47,6 +47,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             input.Start();
             await output.Start();
 
+            _socket.Dispose();
+
             context.InputChannel.CompleteWriting();
         }
 

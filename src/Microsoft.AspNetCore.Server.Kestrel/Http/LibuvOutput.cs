@@ -121,8 +121,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     Log.ConnectionError(ConnectionId, ex);
                 }
 
-                Socket.Dispose();
-
                 OutputChannel.CompleteReading();
 
                 Log.ConnectionStop(ConnectionId);
