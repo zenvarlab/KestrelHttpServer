@@ -15,7 +15,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public LibuvListenerContext(ServiceContext serviceContext)
             : base(serviceContext)
         {
-            WriteReqPool = new Queue<UvWriteReq>(SocketOutput.MaxPooledWriteReqs);
         }
 
         public LibuvListenerContext(LibuvListenerContext listenerContext)
@@ -23,9 +22,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             ServerAddress = listenerContext.ServerAddress;
             LibuvThread = listenerContext.LibuvThread;
-            Memory = listenerContext.Memory;
-            ConnectionManager = listenerContext.ConnectionManager;
-            WriteReqPool = listenerContext.WriteReqPool;
             Log = listenerContext.Log;
             ConnectionInitializer = listenerContext.ConnectionInitializer;
         }
@@ -35,9 +31,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public LibuvThread LibuvThread { get; set; }
 
         public IConnectionInitializer ConnectionInitializer { get; set; }
-
-        public LibuvConnectionManager ConnectionManager { get; set; }
-
-        public Queue<UvWriteReq> WriteReqPool { get; set; }
     }
 }

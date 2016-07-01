@@ -88,7 +88,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var engine = new LibuvEngine(testContext);
             engine.Start(1);
             var address = ServerAddress.FromUrl("http://127.0.0.1:0/");
-            var started = engine.CreateServer(address);
+            var started = engine.CreateServer(new ListenerContext
+            {
+                Address = address,
+                ServiceContext = testContext
+            });
             started.Dispose();
             engine.Dispose();
         }
@@ -101,7 +105,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var engine = new LibuvEngine(testContext);
             engine.Start(1);
             var address = ServerAddress.FromUrl("http://127.0.0.1:0/");
-            var started = engine.CreateServer(address);
+            var started = engine.CreateServer(new ListenerContext
+            {
+                Address = address,
+                ServiceContext = testContext
+            });
 
             var socket = TestConnection.CreateConnectedLoopbackSocket(address.Port);
             socket.Send(Encoding.ASCII.GetBytes("POST / HTTP/1.0\r\n\r\nHello World"));

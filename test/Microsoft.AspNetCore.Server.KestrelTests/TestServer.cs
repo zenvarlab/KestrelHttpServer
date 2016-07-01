@@ -41,7 +41,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 _engine = new LibuvEngine(context);
                 _engine.Start(1);
                 _address = ServerAddress.FromUrl(serverAddress);
-                _server = _engine.CreateServer(_address);
+                _server = _engine.CreateServer(new ListenerContext
+                {
+                    Address = _address,
+                    ServiceContext = context
+                });
             }
             catch
             {

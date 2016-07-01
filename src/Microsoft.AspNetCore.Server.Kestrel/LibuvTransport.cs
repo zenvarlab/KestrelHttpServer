@@ -3,10 +3,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Net;
-using System.Net.Sockets;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Networking;
 
@@ -22,39 +19,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             _threadCount = threadCount;
         }
 
-        public IDisposable CreateListener(ServerAddress address)
+        public void Initialize(ServiceContext serviceContext)
         {
-            return _engine.CreateServer(address);
+            _engine = new LibuvEngine(serviceContext);
+            _engine.Start(_threadCount);
+        }
+
+        public IDisposable CreateListener(ListenerContext listenerContext)
+        {
+            return _engine.CreateServer(listenerContext);
         }
 
         public void Dispose()
         {
             _engine?.Dispose();
         }
-
-        public void Initialize(IConnectionInitializer initiailizer, ServiceContext serviceContext)
-        {
-            _engine = new LibuvEngine(serviceContext);
-            _engine.ConnectionInitializer = initiailizer;
-            _engine.Start(_threadCount);
-        }
     }
 
-    public class LibuvEngine : ServiceContext, IDisposable
+    public class LibuvEngine : IDisposable
     {
-        public LibuvEngine(ServiceContext context)
-            : this(new Libuv(), context)
+        private ServiceContext _serviceContext;
+        public LibuvEngine(ServiceContext serviceContext)
+            : this(new Libuv(), serviceContext)
         { }
 
         // For testing
-        internal LibuvEngine(Libuv uv, ServiceContext context)
-           : base(context)
+        internal LibuvEngine(Libuv uv, ServiceContext serviceContext)
         {
             Libuv = uv;
+            _serviceContext = serviceContext;
             Threads = new List<LibuvThread>();
         }
 
-        public IConnectionInitializer ConnectionInitializer { get; set; }
         public Libuv Libuv { get; private set; }
         public List<LibuvThread> Threads { get; private set; }
 
@@ -62,7 +58,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         {
             for (var index = 0; index < count; index++)
             {
-                Threads.Add(new LibuvThread(this));
+                Threads.Add(new LibuvThread(this, _serviceContext));
             }
 
             foreach (var thread in Threads)
@@ -75,15 +71,28 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         {
             foreach (var thread in Threads)
             {
+                WalkConnectionsAndClose(thread);
+
+                thread.LibuvConnectionManager.WaitForConnectionCloseAsync().Wait();
+
                 thread.Stop(TimeSpan.FromSeconds(2.5));
             }
+
             Threads.Clear();
         }
 
-        public IDisposable CreateServer(ServerAddress address)
+        private async void WalkConnectionsAndClose(LibuvThread thread)
+        {
+            await thread;
+
+            thread.LibuvConnectionManager.WalkConnectionsAndClose();
+        }
+
+        public IDisposable CreateServer(ListenerContext listenerContext)
         {
             var listeners = new List<IAsyncDisposable>();
 
+            var address = listenerContext.Address;
             var usingPipes = address.IsUnixPipe;
 
             try
@@ -93,32 +102,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 var single = Threads.Count == 1;
                 var first = true;
 
-                foreach (var thread in Threads)
+                for (int i = 0; i < Threads.Count; i++)
                 {
+                    var thread = Threads[i];
+
                     if (single)
                     {
                         var listener = usingPipes ?
-                            (LibuvListener)new PipeListener(this) :
-                            new LibuvTcpListener(this);
+                            (LibuvListener)new PipeListener(listenerContext.ServiceContext) :
+                            new LibuvTcpListener(listenerContext.ServiceContext);
                         listeners.Add(listener);
-                        listener.StartAsync(address, thread, ConnectionInitializer).Wait();
+                        listener.StartAsync(address, thread, listenerContext.ConnectionInitializer).Wait();
                     }
                     else if (first)
                     {
                         var listener = usingPipes
-                            ? (LibuvListenerPrimary)new PipeListenerPrimary(this)
-                            : new LibuvTcpListenerPrimary(this);
+                            ? (LibuvListenerPrimary)new PipeListenerPrimary(listenerContext.ServiceContext)
+                            : new LibuvTcpListenerPrimary(listenerContext.ServiceContext);
 
                         listeners.Add(listener);
-                        listener.StartAsync(pipeName, address, thread, ConnectionInitializer).Wait();
+                        listener.StartAsync(pipeName, address, thread, listenerContext.ConnectionInitializer).Wait();
                     }
                     else
                     {
                         var listener = usingPipes
-                            ? (LibuvListenerSecondary)new PipeListenerSecondary(this)
-                            : new LibuvTcpListenerSecondary(this);
+                            ? (LibuvListenerSecondary)new PipeListenerSecondary(listenerContext.ServiceContext)
+                            : new LibuvTcpListenerSecondary(listenerContext.ServiceContext);
                         listeners.Add(listener);
-                        listener.StartAsync(pipeName, address, thread, ConnectionInitializer).Wait();
+                        listener.StartAsync(pipeName, address, thread, listenerContext.ConnectionInitializer).Wait();
                     }
 
                     first = false;

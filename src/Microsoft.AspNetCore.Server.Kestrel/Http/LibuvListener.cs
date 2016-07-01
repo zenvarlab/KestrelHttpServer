@@ -30,7 +30,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ServerAddress = address;
             LibuvThread = thread;
             ConnectionInitializer = initializer;
-            ConnectionManager = new LibuvConnectionManager(thread);
 
             await LibuvThread;
 
@@ -82,25 +81,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 ListenSocket.Dispose();
 
                 _closed = true;
-
-                ConnectionManager.WalkConnectionsAndClose();
-
-                await ThreadPool;
-
-                await ConnectionManager.WaitForConnectionCloseAsync().ConfigureAwait(false);
-
-                await LibuvThread;
-
-                while (WriteReqPool.Count > 0)
-                {
-                    WriteReqPool.Dequeue().Dispose();
-                }
-
-                await ThreadPool;
             }
 
-            Memory.Dispose();
             ListenSocket = null;
+
+            await ThreadPool;
         }
     }
 }

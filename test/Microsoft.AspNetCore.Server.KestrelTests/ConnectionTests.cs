@@ -26,7 +26,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 {
                     //FrameFactory = (connectionContext, sc) => new Frame<HttpContext>(
                     //    new DummyApplication(httpContext => TaskUtilities.CompletedTask), connectionContext, sc),
-                    Memory = memory,
                     ServerAddress = ServerAddress.FromUrl("http://127.0.0.1:0"),
                     LibuvThread = engine.Threads[0]
                 };

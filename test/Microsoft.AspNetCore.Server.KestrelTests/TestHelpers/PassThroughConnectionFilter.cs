@@ -12,7 +12,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
     {
         public Task OnConnectionAsync(ConnectionFilterContext context)
         {
-            context.Connection = new LoggingStream(context.Connection, new TestApplicationErrorLogger());
+            context.Connection = new LoggingStream(context.Connection, context.ConnectionId, new TestApplicationErrorLogger());
             return TaskUtilities.CompletedTask;
         }
     }

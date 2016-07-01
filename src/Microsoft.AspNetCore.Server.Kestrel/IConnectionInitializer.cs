@@ -4,6 +4,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 {
     public interface IConnectionInitializer
     {
-        IConnectionContext StartConnection(IConnectionInformation connectionInformation, ServiceContext serviceContext);
+        /// <summary>
+        /// Starts a connection
+        /// </summary>
+        /// <param name="connectionInformation"></param>
+        /// <returns></returns>
+        IConnectionContext StartConnection(IConnectionInformation connectionInformation);
     }
 }

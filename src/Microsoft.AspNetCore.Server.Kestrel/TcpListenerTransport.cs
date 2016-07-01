@@ -11,19 +11,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 {
     public class TcpListenerTransport : ITransport
     {
-        private ServiceContext _serviceContext;
-        private IConnectionInitializer _initializer;
-
-        public void Initialize(IConnectionInitializer initializer, ServiceContext serviceContext)
+        public void Initialize(ServiceContext serviceContext)
         {
-            _initializer = initializer;
-            _serviceContext = serviceContext;
         }
 
-        public IDisposable CreateListener(ServerAddress address)
+        public IDisposable CreateListener(ListenerContext listenerContext)
         {
-            var listener = new Listener(_initializer, _serviceContext);
-            listener.Start(address);
+            var listener = new Listener(listenerContext);
+            listener.Start(listenerContext.Address);
 
             return listener;
         }
@@ -36,7 +31,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private class Listener : IDisposable
         {
 #if !NET451
-            public Listener(IConnectionInitializer initializer, ServiceContext serviceContext)
+            public Listener(ListenerContext context)
             {
             }
 
@@ -49,16 +44,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             {
             }
 #else
-            private readonly ServiceContext _serviceContext;
-            private readonly IConnectionInitializer _initializer;
+            private readonly ListenerContext _context;
             private TcpListener _listener;
             private CancellationTokenSource _cts = new CancellationTokenSource();
             private List<Task> _connections = new List<Task>();
 
-            public Listener(IConnectionInitializer initializer, ServiceContext serviceContext)
+            public Listener(ListenerContext context)
             {
-                _initializer = initializer;
-                _serviceContext = serviceContext;
+                _context = context;
             }
 
             public async void Start(ServerAddress address)
@@ -87,7 +80,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 connection.ServerAddress = address;
                 connection.RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
                 connection.LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
-                var connectionContext = _initializer.StartConnection(connection, _serviceContext);
+                var connectionContext = _context.ConnectionInitializer.StartConnection(connection);
                 _connections.Add(connection.Start(connectionContext));
             }
 

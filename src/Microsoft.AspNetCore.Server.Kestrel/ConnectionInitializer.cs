@@ -13,6 +13,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
     public class ConnectionInitializer<TContext> : IConnectionInitializer, IDisposable
     {
         private readonly IHttpApplication<TContext> _application;
+        private readonly ServiceContext _serviceContext;
 
         // Base32 encoding - in ascii sort order for easy text based sorting
         private static readonly string _encode32Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
@@ -23,29 +24,32 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private static long _lastConnectionId = DateTime.UtcNow.Ticks;
 
         private List<Frame> _frames = new List<Frame>();
+        private readonly MemoryPool _pool;
 
-        public ConnectionInitializer(IHttpApplication<TContext> application)
+        public ConnectionInitializer(IHttpApplication<TContext> application, MemoryPool pool, ServiceContext serviceContext)
         {
             _application = application;
+            _pool = pool;
+            _serviceContext = serviceContext;
         }
 
-        public IConnectionContext StartConnection(IConnectionInformation connectionInformation, ServiceContext serviceContext)
+        public IConnectionContext StartConnection(IConnectionInformation connectionInformation)
         {
             var connectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
 
-            var inputChannel = new MemoryPoolChannel(serviceContext.Memory, serviceContext.ThreadPool);
-            var outputChannel = new MemoryPoolChannel(serviceContext.Memory, serviceContext.ThreadPool);
+            var inputChannel = new MemoryPoolChannel(_pool, _serviceContext.ThreadPool);
+            var outputChannel = new MemoryPoolChannel(_pool, _serviceContext.ThreadPool);
 
             var connectionContext = new ConnectionContext(connectionId, inputChannel, outputChannel);
 
-            StartProcessingRequests(connectionInformation, connectionContext.ConnectionId, serviceContext, inputChannel, outputChannel);
+            StartProcessingRequests(connectionInformation, connectionContext.ConnectionId, inputChannel, outputChannel);
 
             return connectionContext;
         }
 
-        public async void StartProcessingRequests(IConnectionInformation connectionInformation, string connectionId, ServiceContext serviceContext, MemoryPoolChannel inputChannel, MemoryPoolChannel outputChannel)
+        public async void StartProcessingRequests(IConnectionInformation connectionInformation, string connectionId, MemoryPoolChannel inputChannel, MemoryPoolChannel outputChannel)
         {
-            var frame = new Frame<TContext>(_application, connectionInformation, serviceContext);
+            var frame = new Frame<TContext>(_application, connectionInformation, _serviceContext);
 
             _frames.Add(frame);
 
@@ -53,7 +57,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             frame.InputChannel = inputChannel;
             frame.OutputChannel = outputChannel;
 
-            if (serviceContext.ServerOptions.ConnectionFilter != null)
+            if (_serviceContext.ServerOptions.ConnectionFilter != null)
             {
                 var stream = new MemoryPoolChannelStream(inputChannel, outputChannel);
 
@@ -64,7 +68,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     ConnectionInformation = connectionInformation
                 };
 
-                await serviceContext.ServerOptions.ConnectionFilter.OnConnectionAsync(connectionFilterContext);
+                await _serviceContext.ServerOptions.ConnectionFilter.OnConnectionAsync(connectionFilterContext);
 
                 frame.PrepareRequest = connectionFilterContext.PrepareRequest;
 
@@ -73,9 +77,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     var streamConnection = new StreamChannelAdapter(
                         connectionId,
                         connectionFilterContext.Connection,
-                        serviceContext.Memory,
-                        serviceContext.Log,
-                        serviceContext.ThreadPool);
+                        _pool,
+                        _serviceContext.Log,
+                        _serviceContext.ThreadPool);
 
                     frame.OutputChannel = streamConnection.InputChannel;
                     frame.InputChannel = streamConnection.OutputChannel;

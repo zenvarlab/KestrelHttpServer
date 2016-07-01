@@ -39,10 +39,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 LocalEndPoint = tcpHandle.GetSockIPEndPoint();
             }
 
-            var context = ConnectionInitializer.StartConnection(this, this);
+            var context = ConnectionInitializer.StartConnection(this);
 
             var input = new LibuvInput(LibuvThread, _socket, context.InputChannel, context.ConnectionId, Log, ThreadPool);
-            var output = new LibuvOutput(LibuvThread, _socket, context.OutputChannel, context.ConnectionId, Log, ThreadPool, WriteReqPool);
+            var output = new LibuvOutput(LibuvThread, _socket, context.OutputChannel, context.ConnectionId, Log, ThreadPool);
 
             input.Start();
             await output.Start();

@@ -16,8 +16,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             IReadableChannel outputChannel,
             string connectionId,
             IKestrelTrace log,
-            IThreadPool threadPool,
-            Queue<UvWriteReq> writeReqPool)
+            IThreadPool threadPool)
         {
             LibuvThread = libuvThread;
             Socket = socket;
@@ -25,7 +24,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ConnectionId = connectionId;
             Log = log;
             ThreadPool = threadPool;
-            WriteReqPool = writeReqPool;
+            WriteReqPool = libuvThread.WriteReqPool;
         }
 
         public IThreadPool ThreadPool { get; }

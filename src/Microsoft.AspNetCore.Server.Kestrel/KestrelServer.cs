@@ -71,25 +71,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             {
                 var dateHeaderValueManager = new DateHeaderValueManager();
                 var trace = new KestrelTrace(_logger);
-                var pool = new MemoryPool();
                 var threadPool = new LoggingThreadPool(trace);
-                var serviceContext = new ServiceContext
-                {
-                    AppLifetime = _applicationLifetime,
-                    Log = trace,
-                    ThreadPool = threadPool,
-                    Memory = pool,
-                    DateHeaderValueManager = dateHeaderValueManager,
-                    ServerOptions = Options
-                };
-
-                var connectionInitializer = new ConnectionInitializer<TContext>(application);
-
                 var transport = Options.Transport ?? new LibuvTransport(Options.ThreadCount);
 
-                transport.Initialize(connectionInitializer, serviceContext);
-
-                _disposables.Push(pool);
                 _disposables.Push(transport);
                 _disposables.Push(dateHeaderValueManager);
 
@@ -112,16 +96,37 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 }
 
                 var atLeastOneListener = false;
+                var serviceContext = new ServiceContext
+                {
+                    AppLifetime = _applicationLifetime,
+                    Log = trace,
+                    ThreadPool = threadPool,
+                    DateHeaderValueManager = dateHeaderValueManager,
+                    ServerOptions = Options
+                };
+
+                transport.Initialize(serviceContext);
 
                 foreach (var address in _serverAddresses.Addresses.ToArray())
                 {
+                    var memoryPool = new MemoryPool();
                     var parsedAddress = ServerAddress.FromUrl(address);
                     atLeastOneListener = true;
 
                     if (!parsedAddress.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase))
                     {
-                        _disposables.Push(transport.CreateListener(
-                            parsedAddress));
+                        var initializer = new ConnectionInitializer<TContext>(application, memoryPool, serviceContext);
+                        var listenerContext = new ListenerContext
+                        {
+                            Memory = memoryPool,
+                            Address = parsedAddress,
+                            ConnectionInitializer = initializer,
+                            ServiceContext = serviceContext
+                        };
+
+                        _disposables.Push(transport.CreateListener(listenerContext));
+                        _disposables.Push(initializer);
+                        _disposables.Push(memoryPool);
                     }
                     else
                     {
@@ -135,13 +140,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                         try
                         {
-                            _disposables.Push(transport.CreateListener(ipv4Address));
+                            var initializer = new ConnectionInitializer<TContext>(application, memoryPool, serviceContext);
+                            var listenerContext = new ListenerContext
+                            {
+                                Memory = memoryPool,
+                                Address = ipv4Address,
+                                ConnectionInitializer = initializer,
+                                ServiceContext = serviceContext
+                            };
+
+                            _disposables.Push(transport.CreateListener(listenerContext));
+                            _disposables.Push(initializer);
+                            _disposables.Push(memoryPool);
                         }
                         catch (AggregateException ex)
                         {
                             var uvException = ex.InnerException as UvException;
 
-                            if (uvException != null && uvException.StatusCode != Constants.EADDRINUSE)
+                            if (uvException?.StatusCode != Constants.EADDRINUSE)
                             {
                                 _logger.LogWarning(0, ex, $"Unable to bind to {parsedAddress.ToString()} on the IPv4 loopback interface.");
                                 exceptions.Add(uvException);
@@ -156,13 +172,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                         try
                         {
-                            _disposables.Push(transport.CreateListener(ipv6Address));
+                            var initializer = new ConnectionInitializer<TContext>(application, memoryPool, serviceContext);
+                            var listenerContext = new ListenerContext
+                            {
+                                Memory = memoryPool,
+                                Address = ipv6Address,
+                                ConnectionInitializer = initializer,
+                                ServiceContext = serviceContext
+                            };
+                            _disposables.Push(transport.CreateListener(listenerContext));
+                            _disposables.Push(initializer);
+                            _disposables.Push(memoryPool);
                         }
                         catch (AggregateException ex)
                         {
                             var uvException = ex.InnerException as UvException;
 
-                            if (uvException != null && uvException.StatusCode != Constants.EADDRINUSE)
+                            if (uvException?.StatusCode != Constants.EADDRINUSE)
                             {
                                 _logger.LogWarning(0, ex, $"Unable to bind to {parsedAddress.ToString()} on the IPv6 loopback interface.");
                                 exceptions.Add(uvException);
@@ -190,8 +216,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 {
                     throw new InvalidOperationException("No recognized listening addresses were configured.");
                 }
-
-                _disposables.Push(connectionInitializer);
             }
             catch
             {

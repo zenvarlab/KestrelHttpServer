@@ -22,9 +22,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         private readonly IKestrelTrace _logger;
         public NetworkingTests()
         {
-            var engine = new LibuvEngine(new TestServiceContext());
+            var context = new TestServiceContext();
+            var engine = new LibuvEngine(context);
             _uv = engine.Libuv;
-            _logger = engine.Log;
+            _logger = context.Log;
         }
 
         [Fact]

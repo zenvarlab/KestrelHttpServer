@@ -12,6 +12,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     {
         private LibuvThread _thread;
         private List<Task> _connectionStopTasks;
+        private TaskCompletionSource<object> _tcs = new TaskCompletionSource<object>();
 
         public LibuvConnectionManager(LibuvThread thread)
         {
@@ -38,16 +39,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     _connectionStopTasks.Add(connection.StopAsync());
                 }
             });
+
+            _tcs.TrySetResult(null);
         }
 
-        public Task WaitForConnectionCloseAsync()
+        public async Task WaitForConnectionCloseAsync()
         {
-            if (_connectionStopTasks == null)
-            {
-                throw new InvalidOperationException($"{nameof(WalkConnectionsAndClose)} must be called first.");
-            }
+            await _tcs.Task;
 
-            return Task.WhenAll(_connectionStopTasks);
+            await Task.WhenAll(_connectionStopTasks);
         }
     }
 }

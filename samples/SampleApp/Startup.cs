@@ -17,25 +17,27 @@ namespace SampleApp
         {
             loggerFactory.AddConsole(LogLevel.Trace);
 
+            var data = "Hello World";
+
             app.Run(async context =>
             {
-                Console.WriteLine("{0} {1}{2}{3}",
-                    context.Request.Method,
-                    context.Request.PathBase,
-                    context.Request.Path,
-                    context.Request.QueryString);
-                Console.WriteLine($"Method: {context.Request.Method}");
-                Console.WriteLine($"PathBase: {context.Request.PathBase}");
-                Console.WriteLine($"Path: {context.Request.Path}");
-                Console.WriteLine($"QueryString: {context.Request.QueryString}");
+                //Console.WriteLine("{0} {1}{2}{3}",
+                //    context.Request.Method,
+                //    context.Request.PathBase,
+                //    context.Request.Path,
+                //    context.Request.QueryString);
+                //Console.WriteLine($"Method: {context.Request.Method}");
+                //Console.WriteLine($"PathBase: {context.Request.PathBase}");
+                //Console.WriteLine($"Path: {context.Request.Path}");
+                //Console.WriteLine($"QueryString: {context.Request.QueryString}");
 
-                var connectionFeature = context.Connection;
-                Console.WriteLine($"Peer: {connectionFeature.RemoteIpAddress?.ToString()} {connectionFeature.RemotePort}");
-                Console.WriteLine($"Sock: {connectionFeature.LocalIpAddress?.ToString()} {connectionFeature.LocalPort}");
+                //var connectionFeature = context.Connection;
+                //Console.WriteLine($"Peer: {connectionFeature.RemoteIpAddress?.ToString()} {connectionFeature.RemotePort}");
+                //Console.WriteLine($"Sock: {connectionFeature.LocalIpAddress?.ToString()} {connectionFeature.LocalPort}");
 
-                context.Response.ContentLength = 11;
+                context.Response.ContentLength = data.Length;
                 context.Response.ContentType = "text/plain";
-                await context.Response.WriteAsync("Hello world");
+                await context.Response.WriteAsync(data);
             });
         }
 
@@ -46,11 +48,11 @@ namespace SampleApp
                 {
                     // options.ThreadCount = 4;
                     options.NoDelay = true;
-                    options.Transport = new TcpListenerTransport();
+                    // options.Transport = new TcpListenerTransport();
                     // options.UseHttps("testCert.pfx", "testPassword");
                     // options.UseConnectionLogging();
                 })
-                .UseUrls("http://localhost:5000")//, "https://localhost:5001")
+                .UseUrls("http://localhost:5000", "https://localhost:5001")
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>()
                 .Build();

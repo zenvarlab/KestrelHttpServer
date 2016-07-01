@@ -41,7 +41,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             ServerAddress = address;
             LibuvThread = thread;
             ConnectionInitializer = connectionInitializer;
-            ConnectionManager = new LibuvConnectionManager(thread);
 
             DispatchPipe = new UvPipeHandle(Log);
 
@@ -174,27 +173,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 _closed = true;
 
-                ConnectionManager.WalkConnectionsAndClose();
-
-                await ThreadPool;
-
-                await ConnectionManager.WaitForConnectionCloseAsync().ConfigureAwait(false);
-
-                await LibuvThread;
-
-                while (WriteReqPool.Count > 0)
-                {
-                    WriteReqPool.Dequeue().Dispose();
-                }
-
                 await ThreadPool;
             }
             else
             {
                 FreeBuffer();
             }
-
-            Memory.Dispose();
         }
     }
 }

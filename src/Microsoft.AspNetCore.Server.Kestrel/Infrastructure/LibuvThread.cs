@@ -8,6 +8,7 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Server.Kestrel.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Networking;
 using Microsoft.Extensions.Logging;
@@ -44,12 +45,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private readonly IKestrelTrace _log;
         private readonly IThreadPool _threadPool;
 
-        public LibuvThread(LibuvEngine engine)
+        public LibuvThread(LibuvEngine engine, ServiceContext serviceContext)
         {
             _engine = engine;
-            _appLifetime = engine.AppLifetime;
-            _log = engine.Log;
-            _threadPool = engine.ThreadPool;
+            _appLifetime = serviceContext.AppLifetime;
+            _log = serviceContext.Log;
+            _threadPool = serviceContext.ThreadPool;
             _loop = new UvLoopHandle(_log);
             _post = new UvAsyncHandle(_log);
             _thread = new Thread(ThreadStart);
@@ -61,9 +62,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 #endif
             QueueCloseHandle = PostCloseHandle;
             QueueCloseAsyncHandle = EnqueueCloseHandle;
+            WriteReqPool = new Queue<UvWriteReq>(SocketOutput.MaxPooledWriteReqs);
+            LibuvConnectionManager = new LibuvConnectionManager(this);
         }
 
         public UvLoopHandle Loop { get { return _loop; } }
+
+        public Queue<UvWriteReq> WriteReqPool { get; }
+
+        public LibuvConnectionManager LibuvConnectionManager { get; }
 
         public ExceptionDispatchInfo FatalError { get { return _closeError; } }
 
