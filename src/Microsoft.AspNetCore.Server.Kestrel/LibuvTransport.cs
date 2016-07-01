@@ -71,6 +71,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         {
             foreach (var thread in Threads)
             {
+                while (thread.WriteReqPool.Count > 0)
+                {
+                    thread.WriteReqPool.Dequeue().Dispose();
+                }
+
                 WalkConnectionsAndClose(thread);
 
                 thread.LibuvConnectionManager.WaitForConnectionCloseAsync().Wait();

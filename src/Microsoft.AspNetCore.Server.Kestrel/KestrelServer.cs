@@ -124,8 +124,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                             ServiceContext = serviceContext
                         };
 
-                        _disposables.Push(transport.CreateListener(listenerContext));
                         _disposables.Push(initializer);
+                        _disposables.Push(transport.CreateListener(listenerContext));
                         _disposables.Push(memoryPool);
                     }
                     else
@@ -149,8 +149,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                                 ServiceContext = serviceContext
                             };
 
-                            _disposables.Push(transport.CreateListener(listenerContext));
                             _disposables.Push(initializer);
+                            _disposables.Push(transport.CreateListener(listenerContext));
                             _disposables.Push(memoryPool);
                         }
                         catch (AggregateException ex)
@@ -180,8 +180,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                                 ConnectionInitializer = initializer,
                                 ServiceContext = serviceContext
                             };
-                            _disposables.Push(transport.CreateListener(listenerContext));
                             _disposables.Push(initializer);
+                            _disposables.Push(transport.CreateListener(listenerContext));
                             _disposables.Push(memoryPool);
                         }
                         catch (AggregateException ex)
