@@ -21,18 +21,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             UvStreamHandle socket,
             IWritableChannel inputChannel,
             string connectionId,
-            IKestrelTrace log,
-            IThreadPool threadPool)
+            IKestrelTrace log)
         {
             LibuvThread = libuvThread;
             Socket = socket;
             InputChannel = inputChannel;
             ConnectionId = connectionId;
             Log = log;
-            ThreadPool = threadPool;
         }
-
-        public IThreadPool ThreadPool { get; }
 
         public IKestrelTrace Log { get; }
 
@@ -140,7 +136,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     // Resume pumping data from the socket
                     Resume();
                 }
-
             }
         }
 

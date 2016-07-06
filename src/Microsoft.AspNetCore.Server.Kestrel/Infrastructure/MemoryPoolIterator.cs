@@ -3,9 +3,11 @@
 
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Numerics;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
@@ -660,6 +662,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                         block = block.Next;
                         index = block.Start;
                     }
+                }
+            }
+        }
+
+        public async Task CopyToAsync(Stream stream, MemoryPoolBlock end)
+        {
+            if (IsDefault)
+            {
+                return;
+            }
+
+            var block = _block;
+            var index = _index;
+
+            while (true)
+            {
+                // Determine if we might attempt to copy data from block.Next before
+                // calculating "following" so we don't risk skipping data that could
+                // be added after block.End when we decide to copy from block.Next.
+                // block.End will always be advanced before block.Next is set.
+                var wasLastBlock = block.Next == null || block == end;
+                var following = block.End - index;
+                if (wasLastBlock)
+                {
+                    await stream.WriteAsync(block.Array, index, following);
+                    break;
+                }
+                else
+                {
+                    await stream.WriteAsync(block.Array, index, following);
+                    block = block.Next;
+                    index = block.Start;
                 }
             }
         }

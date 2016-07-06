@@ -10,22 +10,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
 {
     public class StreamChannelAdapter
     {
-        private readonly string _connectionId;
         private readonly Stream _stream;
-        private readonly IKestrelTrace _log;
 
-        public StreamChannelAdapter(
-            string connectionId,
-            Stream stream,
-            MemoryPool memory,
-            IKestrelTrace logger,
-            IThreadPool threadPool)
+        public StreamChannelAdapter(Stream stream, MemoryPool memory, IThreadPool threadPool)
         {
             InputChannel = new MemoryPoolChannel(memory, threadPool);
             OutputChannel = new MemoryPoolChannel(memory, threadPool);
-
-            _connectionId = connectionId;
-            _log = logger;
             _stream = stream;
         }
 
@@ -105,28 +95,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
 
                     try
                     {
-                        var block = start.Block;
-
                         if (end.IsDefault)
                         {
                             continue;
                         }
 
-                        while (true)
-                        {
-                            var blockStart = block == start.Block ? start.Index : block.Data.Offset;
-                            var blockEnd = block == end.Block ? end.Index : block.Data.Offset + block.Data.Count;
-                            var length = blockEnd - blockStart;
-
-                            await _stream.WriteAsync(block.Array, blockStart, length);
-
-                            if (block == end.Block)
-                            {
-                                break;
-                            }
-
-                            block = block.Next;
-                        }
+                        await start.CopyToAsync(_stream, end.Block);
                     }
                     catch (Exception ex)
                     {

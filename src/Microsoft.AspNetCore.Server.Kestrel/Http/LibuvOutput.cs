@@ -15,19 +15,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             UvStreamHandle socket,
             IReadableChannel outputChannel,
             string connectionId,
-            IKestrelTrace log,
-            IThreadPool threadPool)
         {
             LibuvThread = libuvThread;
             Socket = socket;
             OutputChannel = outputChannel;
             ConnectionId = connectionId;
             Log = log;
-            ThreadPool = threadPool;
             WriteReqPool = libuvThread.WriteReqPool;
         }
-
-        public IThreadPool ThreadPool { get; }
 
         public IKestrelTrace Log { get; }
 

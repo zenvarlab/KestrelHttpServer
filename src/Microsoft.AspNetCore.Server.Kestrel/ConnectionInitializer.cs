@@ -73,10 +73,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 if (connectionFilterContext.Connection != stream)
                 {
                     var streamConnection = new StreamChannelAdapter(
-                        connectionId,
                         connectionFilterContext.Connection,
                         _pool,
-                        _serviceContext.Log,
                         _serviceContext.ThreadPool);
 
                     frame.OutputChannel = streamConnection.InputChannel;

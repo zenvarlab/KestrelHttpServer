@@ -41,8 +41,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             var context = ConnectionInitializer.StartConnection(this);
 
-            var input = new LibuvInput(LibuvThread, _socket, context.InputChannel, context.ConnectionId, Log, ThreadPool);
-            var output = new LibuvOutput(LibuvThread, _socket, context.OutputChannel, context.ConnectionId, Log, ThreadPool);
+            var input = new LibuvInput(LibuvThread, _socket, context.InputChannel, context.ConnectionId, Log);
+            var output = new LibuvOutput(LibuvThread, _socket, context.OutputChannel, context.ConnectionId, Log);
 
             input.Start();
             await output.Start();

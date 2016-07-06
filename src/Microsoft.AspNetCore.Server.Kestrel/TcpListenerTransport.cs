@@ -162,6 +162,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 {
 
                 }
+
+                context.InputChannel.CompleteWriting();
             }
 
             private async Task ProcessWrites(IConnectionContext context, NetworkStream stream)
