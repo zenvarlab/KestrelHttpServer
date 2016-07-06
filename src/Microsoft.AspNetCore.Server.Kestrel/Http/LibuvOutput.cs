@@ -15,6 +15,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             UvStreamHandle socket,
             IReadableChannel outputChannel,
             string connectionId,
+            IKestrelTrace log)
         {
             LibuvThread = libuvThread;
             Socket = socket;
