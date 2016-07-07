@@ -20,6 +20,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
     /// </summary>
     public class LibuvThread : ICriticalNotifyCompletion
     {
+        public const int MaxPooledWriteReqs = 1024;
+
         // maximum times the work queues swapped and are processed in a single pass
         // as completing a task may immediately have write data to put on the network
         // otherwise it needs to wait till the next pass of the libuv loop
@@ -44,6 +46,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private ExceptionDispatchInfo _closeError;
         private readonly IKestrelTrace _log;
         private readonly IThreadPool _threadPool;
+        private readonly LibuvConnectionManager _connectionManager;
+        private readonly Queue<UvWriteReq> _writeRequestPool = new Queue<UvWriteReq>(SocketOutput.MaxPooledWriteReqs);
 
         public LibuvThread(LibuvEngine engine, ServiceContext serviceContext)
         {
@@ -60,20 +64,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             // Don't do this for debug builds, so we know if the thread isn't terminating.
             _thread.IsBackground = true;
 #endif
+            _connectionManager = new LibuvConnectionManager(this);
+
             QueueCloseHandle = PostCloseHandle;
             QueueCloseAsyncHandle = EnqueueCloseHandle;
-            WriteReqPool = new Queue<UvWriteReq>(SocketOutput.MaxPooledWriteReqs);
             Pool = new MemoryPool();
-            LibuvConnectionManager = new LibuvConnectionManager(this);
         }
 
         public UvLoopHandle Loop { get { return _loop; } }
 
-        public Queue<UvWriteReq> WriteReqPool { get; }
-
         public MemoryPool Pool { get; set; }
-
-        public LibuvConnectionManager LibuvConnectionManager { get; }
 
         public ExceptionDispatchInfo FatalError { get { return _closeError; } }
 
@@ -98,11 +98,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         {
             WalkConnectionsAndClose();
 
-            LibuvConnectionManager.WaitForConnectionCloseAsync().Wait();
+            _connectionManager.WaitForConnectionCloseAsync().Wait();
 
-            while (WriteReqPool.Count > 0)
+            while (_writeRequestPool.Count > 0)
             {
-                WriteReqPool.Dequeue().Dispose();
+                _writeRequestPool.Dequeue().Dispose();
             }
 
             Pool.Dispose();
@@ -147,13 +147,40 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             }
         }
 
+        public UvWriteReq AllocateWriteReq()
+        {
+            UvWriteReq req;
 
+            if (_writeRequestPool.Count > 0)
+            {
+                req = _writeRequestPool.Dequeue();
+            }
+            else
+            {
+                req = new UvWriteReq(_log);
+                req.Init(Loop);
+            }
+
+            return req;
+        }
+
+        public void ReturnWriteRequest(UvWriteReq req)
+        {
+            if (_writeRequestPool.Count < MaxPooledWriteReqs)
+            {
+                _writeRequestPool.Enqueue(req);
+            }
+            else
+            {
+                req.Dispose();
+            }
+        }
 
         private async void WalkConnectionsAndClose()
         {
             await this;
 
-            LibuvConnectionManager.WalkConnectionsAndClose();
+            _connectionManager.WalkConnectionsAndClose();
         }
 
         private void OnStopRude()
