@@ -11,6 +11,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 {
     public class TcpListenerTransport : ITransport
     {
+        private readonly List<Listener> _listeners = new List<Listener>();
+
         public void Initialize(ServiceContext serviceContext)
         {
         }
@@ -18,14 +20,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         public IDisposable CreateListener(ListenerContext listenerContext)
         {
             var listener = new Listener(listenerContext);
+            _listeners.Add(listener);
             listener.Start(listenerContext.Address);
-
             return listener;
         }
 
         public void Dispose()
         {
-
+            _listeners.ForEach(l => l.ShutdownConnections());
         }
 
         private class Listener : IDisposable
@@ -38,6 +40,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             public async void Start(ServerAddress address)
             {
                 throw new NotImplementedException();
+            }
+
+            public void ShutdownConnections()
+            {
             }
 
             public void Dispose()
@@ -84,10 +90,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 _connections.Add(connection.Start(connectionContext));
             }
 
-            public void Dispose()
+            public void ShutdownConnections()
             {
                 _cts.Cancel();
                 Task.WaitAll(_connections.ToArray());
+            }
+
+            public void Dispose()
+            {
                 _listener.Stop();
             }
         }
