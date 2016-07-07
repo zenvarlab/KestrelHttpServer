@@ -55,7 +55,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
             if (_serviceContext.ServerOptions.ConnectionFilter != null)
             {
-                var stream = new MemoryPoolChannelStream(inputChannel, outputChannel);
+                var stream = new ChannelStream(inputChannel, outputChannel);
 
                 var connectionFilterContext = new ConnectionFilterContext
                 {

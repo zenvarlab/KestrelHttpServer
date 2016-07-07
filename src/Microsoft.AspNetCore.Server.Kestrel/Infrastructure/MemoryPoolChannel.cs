@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
-    public class MemoryPoolChannel : IReadableChannel, IWritableChannel
+    public class MemoryPoolChannel : IReadableChannel, IWritableChannel, IDisposable
     {
         private static readonly Action _awaitableIsCompleted = () => { };
         private static readonly Action _awaitableIsNotCompleted = () => { };
@@ -261,7 +261,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             }
         }
 
-        private void Dispose()
+        public void Dispose()
         {
             Debug.Assert(_completedWriting, "Not completed writing");
             Debug.Assert(_completedReading, "Not completed reading");
