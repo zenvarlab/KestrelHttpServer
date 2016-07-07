@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 {
-    public class MemoryPoolChannel : IReadableChannel, IWritableChannel, IDisposable
+    public class MemoryPoolChannel : IReadableChannel, IWritableChannel
     {
         private static readonly Action _awaitableIsCompleted = () => { };
         private static readonly Action _awaitableIsNotCompleted = () => { };
@@ -168,10 +168,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             }
         }
 
-        public void CompleteAwaiting()
-        {
-            Complete();
-        }
+        public void CompleteAwaiting() => Complete();
 
         public void CompleteWriting(Exception error = null)
         {
@@ -204,13 +201,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                     Dispose();
                 }
             }
-        }
-
-        public void Cancel()
-        {
-            _awaitableError = new TaskCanceledException("The request was aborted");
-
-            Complete();
         }
 
         public IReadableChannel GetAwaiter()
@@ -271,7 +261,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             }
         }
 
-        public void Dispose()
+        private void Dispose()
         {
             Debug.Assert(_completedWriting, "Not completed writing");
             Debug.Assert(_completedReading, "Not completed reading");
