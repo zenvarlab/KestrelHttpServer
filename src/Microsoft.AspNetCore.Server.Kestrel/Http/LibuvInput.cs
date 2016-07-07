@@ -19,20 +19,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public LibuvInput(
             LibuvThread libuvThread,
             UvStreamHandle socket,
-            IWritableChannel inputChannel,
+            IWritableChannel channel,
             string connectionId,
             IKestrelTrace log)
         {
             LibuvThread = libuvThread;
             Socket = socket;
-            InputChannel = inputChannel;
+            Channel = channel;
             ConnectionId = connectionId;
             Log = log;
         }
 
         public IKestrelTrace Log { get; }
 
-        public IWritableChannel InputChannel { get; }
+        public IWritableChannel Channel { get; }
 
         public UvStreamHandle Socket { get; }
 
@@ -63,7 +63,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         private Libuv.uv_buf_t OnAlloc(UvStreamHandle handle, int suggestedSize)
         {
-            _iterator = InputChannel.BeginWrite(MinimumSize);
+            _iterator = Channel.BeginWrite(MinimumSize);
             var result = _iterator.Block;
 
             return handle.Libuv.buf_init(
@@ -108,18 +108,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
 
             _iterator.UpdateEnd(readCount);
-            var task = InputChannel.EndWriteAsync(_iterator);
+            var task = Channel.EndWriteAsync(_iterator);
 
             if (readCount == 0)
             {
-                InputChannel.CompleteWriting();
+                Channel.CompleteWriting();
             }
 
             _iterator = default(MemoryPoolIterator);
 
             if (errorDone)
             {
-                InputChannel.CompleteWriting(error);
+                Channel.CompleteWriting(error);
             }
             else
             {

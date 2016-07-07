@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Filter
 {
-    public class MemoryPoolChannelStream : Stream
+    public class ChannelStream : Stream
     {
         private readonly static Task<int> _initialCachedTask = Task.FromResult(0);
 
@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter
 
         private Task<int> _cachedTask = _initialCachedTask;
 
-        public MemoryPoolChannelStream(IReadableChannel input, IWritableChannel output)
+        public ChannelStream(IReadableChannel input, IWritableChannel output)
         {
             _input = input;
             _output = output;

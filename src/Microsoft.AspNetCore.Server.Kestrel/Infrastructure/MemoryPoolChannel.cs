@@ -4,7 +4,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -29,15 +28,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
 
         private int _consumingState;
         private object _sync = new object();
-        private readonly int _threshold;
-        private LimitState _limitState;
         private readonly IThreadPool _threadPool;
 
-        public MemoryPoolChannel(MemoryPool memory, IThreadPool threadPool, int threshold = 10 * 1024)
+        public MemoryPoolChannel(MemoryPool memory, IThreadPool threadPool)
         {
             _memory = memory;
             _awaitableState = _awaitableIsNotCompleted;
-            _threshold = threshold;
             _threadPool = threadPool;
         }
 
@@ -88,20 +84,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                 {
                     _tail = end.Block;
                     _tail.End = end.Index;
-
-                    // REVIEW: This isn't that efficient, (we can do better)
-                    var length = new MemoryPoolIterator(_head).GetLength(end);
-
-                    if (length > _threshold)
-                    {
-                        _limitState = new LimitState();
-                        _limitState.Length = length;
-                    }
                 }
 
                 Complete();
 
-                return _limitState?.Tcs.Task ?? TaskUtilities.CompletedTask;
+                return TaskUtilities.CompletedTask;
             }
         }
 
@@ -148,19 +135,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             {
                 if (!consumed.IsDefault)
                 {
-                    var lengthConsumed = new MemoryPoolIterator(_head).GetLength(consumed);
-
-                    if (_limitState != null)
-                    {
-                        _limitState.Length -= lengthConsumed;
-
-                        // Need to drain down to 1/2 to start the pipe again
-                        if (_limitState.Length < (_threshold / 2))
-                        {
-                            _threadPool.Complete(_limitState.Tcs);
-                        }
-                    }
-
                     returnStart = _head;
                     returnEnd = consumed.Block;
                     _head = consumed.Block;
@@ -317,13 +291,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                 _head = null;
                 _tail = null;
             }
-        }
-
-        private class LimitState
-        {
-            public int Length { get; set; }
-
-            public TaskCompletionSource<object> Tcs { get; set; } = new TaskCompletionSource<object>();
         }
     }
 }

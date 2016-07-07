@@ -13,13 +13,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public LibuvOutput(
             LibuvThread libuvThread,
             UvStreamHandle socket,
-            IReadableChannel outputChannel,
+            IReadableChannel channel,
             string connectionId,
             IKestrelTrace log)
         {
             LibuvThread = libuvThread;
             Socket = socket;
-            OutputChannel = outputChannel;
+            Channel = channel;
             ConnectionId = connectionId;
             Log = log;
             WriteReqPool = libuvThread.WriteReqPool;
@@ -27,7 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
         public IKestrelTrace Log { get; }
 
-        public IReadableChannel OutputChannel { get; }
+        public IReadableChannel Channel { get; }
 
         public UvStreamHandle Socket { get; }
 
@@ -41,9 +41,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         {
             try
             {
-                while (!OutputChannel.Completed)
+                while (!Channel.Completed)
                 {
-                    await OutputChannel;
+                    await Channel;
 
                     // Switch to the UV thread
                     await LibuvThread;
@@ -53,12 +53,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         break;
                     }
 
-                    if (OutputChannel.Completed)
+                    if (Channel.Completed)
                     {
                         break;
                     }
 
-                    var span = OutputChannel.BeginRead();
+                    var span = Channel.BeginRead();
                     var start = span.Begin;
                     var end = span.End;
 
@@ -80,7 +80,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     }
                     finally
                     {
-                        OutputChannel.EndRead(end);
+                        Channel.EndRead(end);
 
                         // Return the request to the pool
                         ReturnWriteRequest(req);
@@ -117,7 +117,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     Log.ConnectionError(ConnectionId, ex);
                 }
 
-                OutputChannel.CompleteReading();
+                Channel.CompleteReading();
 
                 Log.ConnectionStop(ConnectionId);
             }
