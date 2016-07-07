@@ -94,6 +94,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public string PathBase { get; set; }
         public string Path { get; set; }
         public string QueryString { get; set; }
+        public string RawTarget { get; set; }
+
         public string HttpVersion
         {
             get

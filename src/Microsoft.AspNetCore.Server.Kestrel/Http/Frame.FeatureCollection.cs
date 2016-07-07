@@ -150,6 +150,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             }
         }
 
+        string IHttpRequestFeature.RawTarget
+        {
+            get
+            {
+                return RawTarget;
+            }
+            set
+            {
+                RawTarget = value;
+            }
+        }
+
         IHeaderDictionary IHttpRequestFeature.Headers
         {
             get
