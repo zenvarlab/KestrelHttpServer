@@ -63,12 +63,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             QueueCloseHandle = PostCloseHandle;
             QueueCloseAsyncHandle = EnqueueCloseHandle;
             WriteReqPool = new Queue<UvWriteReq>(SocketOutput.MaxPooledWriteReqs);
+            Pool = new MemoryPool();
             LibuvConnectionManager = new LibuvConnectionManager(this);
         }
 
         public UvLoopHandle Loop { get { return _loop; } }
 
         public Queue<UvWriteReq> WriteReqPool { get; }
+
+        public MemoryPool Pool { get; set; }
 
         public LibuvConnectionManager LibuvConnectionManager { get; }
 
@@ -93,6 +96,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public void Stop(TimeSpan timeout)
         {
+            WalkConnectionsAndClose();
+
+            LibuvConnectionManager.WaitForConnectionCloseAsync().Wait();
+
+            while (WriteReqPool.Count > 0)
+            {
+                WriteReqPool.Dequeue().Dispose();
+            }
+
+            Pool.Dispose();
+
             lock (_startSync)
             {
                 if (!_initCompleted)
@@ -131,6 +145,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             {
                 _closeError.Throw();
             }
+        }
+
+
+
+        private async void WalkConnectionsAndClose()
+        {
+            await this;
+
+            LibuvConnectionManager.WalkConnectionsAndClose();
         }
 
         private void OnStopRude()

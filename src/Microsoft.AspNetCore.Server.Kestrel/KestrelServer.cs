@@ -109,16 +109,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 foreach (var address in _serverAddresses.Addresses.ToArray())
                 {
-                    var memoryPool = new MemoryPool();
                     var parsedAddress = ServerAddress.FromUrl(address);
                     atLeastOneListener = true;
 
                     if (!parsedAddress.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase))
                     {
-                        var initializer = new ConnectionInitializer<TContext>(application, memoryPool, serviceContext);
+                        var initializer = new ConnectionInitializer<TContext>(application, serviceContext);
                         var listenerContext = new ListenerContext
                         {
-                            Memory = memoryPool,
                             Address = parsedAddress,
                             ConnectionInitializer = initializer,
                             ServiceContext = serviceContext
@@ -126,7 +124,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                         _disposables.Push(initializer);
                         _disposables.Push(transport.CreateListener(listenerContext));
-                        _disposables.Push(memoryPool);
                     }
                     else
                     {
@@ -140,10 +137,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                         try
                         {
-                            var initializer = new ConnectionInitializer<TContext>(application, memoryPool, serviceContext);
+                            var initializer = new ConnectionInitializer<TContext>(application, serviceContext);
                             var listenerContext = new ListenerContext
                             {
-                                Memory = memoryPool,
                                 Address = ipv4Address,
                                 ConnectionInitializer = initializer,
                                 ServiceContext = serviceContext
@@ -151,7 +147,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                             _disposables.Push(initializer);
                             _disposables.Push(transport.CreateListener(listenerContext));
-                            _disposables.Push(memoryPool);
                         }
                         catch (AggregateException ex)
                         {
@@ -172,17 +167,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                         try
                         {
-                            var initializer = new ConnectionInitializer<TContext>(application, memoryPool, serviceContext);
+                            var initializer = new ConnectionInitializer<TContext>(application, serviceContext);
                             var listenerContext = new ListenerContext
                             {
-                                Memory = memoryPool,
                                 Address = ipv6Address,
                                 ConnectionInitializer = initializer,
                                 ServiceContext = serviceContext
                             };
                             _disposables.Push(initializer);
                             _disposables.Push(transport.CreateListener(listenerContext));
-                            _disposables.Push(memoryPool);
                         }
                         catch (AggregateException ex)
                         {

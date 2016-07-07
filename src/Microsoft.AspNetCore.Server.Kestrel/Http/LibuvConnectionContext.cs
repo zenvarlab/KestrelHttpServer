@@ -4,6 +4,7 @@
 using System;
 using System.Net;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
@@ -26,5 +27,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         public IPEndPoint RemoteEndPoint { get; set; }
 
         public IPEndPoint LocalEndPoint { get; set; }
+
+        public MemoryPool Pool => LibuvThread.Pool;
     }
 }

@@ -49,15 +49,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             public void Dispose()
             {
             }
+
+            public MemoryPool Pool => null;
 #else
             private readonly ListenerContext _context;
             private TcpListener _listener;
             private CancellationTokenSource _cts = new CancellationTokenSource();
             private List<Task> _connections = new List<Task>();
+            private readonly MemoryPool _pool;
 
             public Listener(ListenerContext context)
             {
                 _context = context;
+                _pool = new MemoryPool();
             }
 
             public async void Start(ServerAddress address)
@@ -82,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
             private void StartConnectionAsync(ServerAddress address, Socket socket)
             {
-                var connection = new SocketConnection(socket, _cts.Token);
+                var connection = new SocketConnection(_pool, socket, _cts.Token);
                 connection.ServerAddress = address;
                 connection.RemoteEndPoint = socket.RemoteEndPoint as IPEndPoint;
                 connection.LocalEndPoint = socket.LocalEndPoint as IPEndPoint;
@@ -94,6 +98,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             {
                 _cts.Cancel();
                 Task.WaitAll(_connections.ToArray());
+                _pool.Dispose();
             }
 
             public void Dispose()
@@ -106,9 +111,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         {
             private readonly Socket _socket;
             private readonly CancellationToken _token;
+            private readonly MemoryPool _pool;
 
-            public SocketConnection(Socket socket, CancellationToken token)
+            public SocketConnection(MemoryPool pool, Socket socket, CancellationToken token)
             {
+                _pool = pool;
                 _socket = socket;
                 _token = token;
                 _token.Register(state => Close(state), this);
@@ -238,8 +245,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
                 context.OutputChannel.CompleteReading();
             }
+
+            public MemoryPool Pool => _pool;
 #endif
-            public string ConnectionId { get; set; }
 
             public IPEndPoint LocalEndPoint { get; set; }
 

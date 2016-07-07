@@ -12,6 +12,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         IPEndPoint RemoteEndPoint { get; }
 
         IPEndPoint LocalEndPoint { get; }
+
+        MemoryPool Pool { get; }
     }
 
     public interface IConnectionContext

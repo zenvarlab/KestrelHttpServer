@@ -24,12 +24,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private static long _lastConnectionId = DateTime.UtcNow.Ticks;
 
         private List<Frame> _frames = new List<Frame>();
-        private readonly MemoryPool _pool;
 
-        public ConnectionInitializer(IHttpApplication<TContext> application, MemoryPool pool, ServiceContext serviceContext)
+        public ConnectionInitializer(IHttpApplication<TContext> application, ServiceContext serviceContext)
         {
             _application = application;
-            _pool = pool;
             _serviceContext = serviceContext;
         }
 
@@ -37,8 +35,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         {
             var connectionId = GenerateConnectionId(Interlocked.Increment(ref _lastConnectionId));
 
-            var inputChannel = new MemoryPoolChannel(_pool, _serviceContext.ThreadPool);
-            var outputChannel = new MemoryPoolChannel(_pool, _serviceContext.ThreadPool);
+            var inputChannel = new MemoryPoolChannel(connectionInformation.Pool, _serviceContext.ThreadPool);
+            var outputChannel = new MemoryPoolChannel(connectionInformation.Pool, _serviceContext.ThreadPool);
 
             var connectionContext = new ConnectionContext(connectionId, inputChannel, outputChannel);
 
@@ -74,7 +72,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                 {
                     var streamConnection = new StreamChannelAdapter(
                         connectionFilterContext.Connection,
-                        _pool,
+                        connectionInformation.Pool,
                         _serviceContext.ThreadPool);
 
                     frame.OutputChannel = streamConnection.InputChannel;

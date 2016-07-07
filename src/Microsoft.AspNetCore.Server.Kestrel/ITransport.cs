@@ -16,7 +16,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
     {
         public ServerAddress Address { get; set; }
         public ServiceContext ServiceContext { get; set; }
-        public MemoryPool Memory { get; set; }
 
         public IConnectionInitializer ConnectionInitializer { get; set; }
     }
