@@ -72,11 +72,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             Pool = new MemoryPool();
         }
 
-        public UvLoopHandle Loop { get { return _loop; } }
+        public UvLoopHandle Loop => _loop;
 
-        public MemoryPool Pool { get; set; }
+        public MemoryPool Pool { get; }
 
-        public ExceptionDispatchInfo FatalError { get { return _closeError; } }
+        public ExceptionDispatchInfo FatalError => _closeError;
 
         public Action<Action<IntPtr>, IntPtr> QueueCloseHandle { get; }
 

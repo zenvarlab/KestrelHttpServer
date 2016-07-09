@@ -73,7 +73,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
                 block = AllocateSlab();
             }
 #if NET451
-            block.StackTrace = new StackTrace().ToString();
+           //block.StackTrace = new StackTrace().ToString();
 #endif
             return block;
         }
