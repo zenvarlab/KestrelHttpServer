@@ -125,13 +125,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public void Dispose()
         {
-            var tasks = new Task[_frames.Count];
+            Task[] tasks;
 
-            for (int i = 0; i < tasks.Length; i++)
+            lock (_frames)
             {
-                var frame = _frames[i];
-                tasks[i] = frame.StopAsync();
-                ((MemoryPoolChannel)frame.InputChannel).CompleteAwaiting();
+                tasks = new Task[_frames.Count];
+
+                for (int i = 0; i < tasks.Length; i++)
+                {
+                    var frame = _frames[i];
+                    tasks[i] = frame.StopAsync();
+                    ((MemoryPoolChannel)frame.InputChannel).CompleteAwaiting();
+                }
             }
 
             Task.WaitAll(tasks);
