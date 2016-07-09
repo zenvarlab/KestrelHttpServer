@@ -20,7 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
     /// </summary>
     public class LibuvThread : ICriticalNotifyCompletion
     {
-        public const int MaxPooledWriteReqs = 1024;
+        private const int _maxPooledWriteReqs = 1024;
 
         // maximum times the work queues swapped and are processed in a single pass
         // as completing a task may immediately have write data to put on the network
@@ -64,6 +64,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             // Don't do this for debug builds, so we know if the thread isn't terminating.
             _thread.IsBackground = true;
 #endif
+            _writeRequestPool = new Queue<UvWriteReq>(_maxPooledWriteReqs);
             _connectionManager = new LibuvConnectionManager(this);
 
             QueueCloseHandle = PostCloseHandle;
@@ -166,7 +167,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public void ReturnWriteRequest(UvWriteReq req)
         {
-            if (_writeRequestPool.Count < MaxPooledWriteReqs)
+            if (_writeRequestPool.Count < _maxPooledWriteReqs)
             {
                 _writeRequestPool.Enqueue(req);
             }
