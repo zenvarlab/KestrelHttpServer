@@ -47,7 +47,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         private readonly IKestrelTrace _log;
         private readonly IThreadPool _threadPool;
         private readonly LibuvConnectionManager _connectionManager;
-        private readonly Queue<UvWriteReq> _writeRequestPool = new Queue<UvWriteReq>(SocketOutput.MaxPooledWriteReqs);
+        private readonly Queue<UvWriteReq> _writeRequestPool = new Queue<UvWriteReq>(_maxPooledWriteReqs);
 
         public LibuvThread(LibuvEngine engine, ServiceContext serviceContext)
         {
