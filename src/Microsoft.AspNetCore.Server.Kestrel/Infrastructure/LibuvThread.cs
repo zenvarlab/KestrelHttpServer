@@ -65,7 +65,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             _thread.IsBackground = true;
 #endif
             _writeRequestPool = new Queue<UvWriteReq>(_maxPooledWriteReqs);
-            _connectionManager = new LibuvConnectionManager(this);
+            _connectionManager = new LibuvConnectionManager(this, _threadPool);
 
             QueueCloseHandle = PostCloseHandle;
             QueueCloseAsyncHandle = EnqueueCloseHandle;
@@ -79,6 +79,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
         public ExceptionDispatchInfo FatalError => _closeError;
 
         public Action<Action<IntPtr>, IntPtr> QueueCloseHandle { get; }
+
+        public int ManagedThreadId => _thread.ManagedThreadId;
 
         private Action<Action<IntPtr>, IntPtr> QueueCloseAsyncHandle { get; }
 

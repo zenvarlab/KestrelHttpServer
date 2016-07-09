@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Networking;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Http
@@ -13,10 +14,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private LibuvThread _thread;
         private List<Task> _connectionStopTasks;
         private TaskCompletionSource<object> _tcs = new TaskCompletionSource<object>();
+        private IThreadPool _threadPool;
 
-        public LibuvConnectionManager(LibuvThread thread)
+        public LibuvConnectionManager(LibuvThread thread, IThreadPool threadPool)
         {
             _thread = thread;
+            _threadPool = threadPool;
         }
 
         // This must be called on the libuv event loop
@@ -40,14 +43,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 }
             });
 
-            _tcs.TrySetResult(null);
+            _threadPool.Complete(_tcs);
         }
 
         public async Task WaitForConnectionCloseAsync()
         {
-            await _tcs.Task;
+            await _tcs.Task.ConfigureAwait(false);
 
-            await Task.WhenAll(_connectionStopTasks);
+            await Task.WhenAll(_connectionStopTasks).ConfigureAwait(false);
         }
     }
 }
