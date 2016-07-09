@@ -14,6 +14,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
         private readonly UvStreamHandle _socket;
         private Task _processingTask;
 
+        private LibuvInput _input;
+        private LibuvOutput _output;
+
         public LibuvConnection(LibuvListenerContext context, UvStreamHandle socket) : base(context)
         {
             _socket = socket;
@@ -43,6 +46,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
             var input = new LibuvInput(LibuvThread, _socket, context.InputChannel, context.ConnectionId, Log);
             var output = new LibuvOutput(LibuvThread, _socket, context.OutputChannel, context.ConnectionId, Log);
+
+            _input = input;
+            _output = output;
 
             input.Start();
             await output.Start();

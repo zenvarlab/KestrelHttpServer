@@ -8,6 +8,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 {
     public class LibuvOutput
     {
+        private UvWriteReq _currentWriteReq;
+        private MemoryPoolSpan _currentSpan;
+
         public LibuvOutput(
             LibuvThread libuvThread,
             UvStreamHandle socket,
@@ -52,16 +55,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     var start = span.Begin;
                     var end = span.End;
 
+                    _currentSpan = span;
+
                     int bytes;
                     int buffers;
                     BytesBetween(start, end, out bytes, out buffers);
 
                     var req = LibuvThread.AllocateWriteReq();
 
+                    _currentWriteReq = req;
+
                     try
                     {
-                        int status = await req.Write(Socket, start, end, buffers);
-                        Log.ConnectionWriteCallback(ConnectionId, status);
+                        if (buffers > 0 && bytes > 0)
+                        {
+                            int status = await req.Write(Socket, start, end, buffers);
+                            Log.ConnectionWriteCallback(ConnectionId, status);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -71,6 +81,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     finally
                     {
                         Channel.EndRead(end);
+
+                        _currentWriteReq = null;
 
                         // Return the request to the pool
                         LibuvThread.ReturnWriteRequest(req);

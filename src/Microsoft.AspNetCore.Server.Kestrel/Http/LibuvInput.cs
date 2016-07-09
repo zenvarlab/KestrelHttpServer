@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 using Microsoft.AspNetCore.Server.Kestrel.Networking;
@@ -107,15 +108,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 handle.Libuv.Check(status, out error);
             }
 
-            _iterator.UpdateEnd(readCount);
             var task = Channel.EndWriteAsync(_iterator);
 
             if (readCount == 0)
             {
                 Channel.CompleteWriting();
             }
-
-            _iterator = default(MemoryPoolIterator);
+            else
+            {
+                _iterator.UpdateEnd(readCount);
+            }
 
             if (errorDone)
             {
