@@ -48,11 +48,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                         break;
                     }
 
-                    if (Channel.Completed)
-                    {
-                        break;
-                    }
-
                     var span = Channel.BeginRead();
                     var start = span.Begin;
                     var end = span.End;
