@@ -99,8 +99,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
 
         public void Stop(TimeSpan timeout)
         {
-            WalkConnectionsAndClose();
-
             _connectionManager.WaitForConnectionCloseAsync().Wait();
 
             while (_writeRequestPool.Count > 0)
@@ -177,13 +175,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel
             {
                 req.Dispose();
             }
-        }
-
-        private async void WalkConnectionsAndClose()
-        {
-            await this;
-
-            _connectionManager.WalkConnectionsAndClose();
         }
 
         private void OnStopRude()

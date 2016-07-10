@@ -61,17 +61,19 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     int buffers;
                     BytesBetween(start, end, out bytes, out buffers);
 
+                    if (bytes == 0)
+                    {
+                        continue;
+                    }
+
                     var req = LibuvThread.AllocateWriteReq();
 
                     _currentWriteReq = req;
 
                     try
                     {
-                        if (buffers > 0 && bytes > 0)
-                        {
-                            int status = await req.Write(Socket, start, end, buffers);
-                            Log.ConnectionWriteCallback(ConnectionId, status);
-                        }
+                        int status = await req.Write(Socket, start, end, buffers);
+                        Log.ConnectionWriteCallback(ConnectionId, status);
                     }
                     catch (Exception ex)
                     {

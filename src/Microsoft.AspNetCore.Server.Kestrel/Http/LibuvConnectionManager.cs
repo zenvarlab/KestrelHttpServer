@@ -12,8 +12,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     public class LibuvConnectionManager
     {
         private LibuvThread _thread;
-        private List<Task> _connectionStopTasks;
-        private TaskCompletionSource<object> _tcs = new TaskCompletionSource<object>();
         private IThreadPool _threadPool;
 
         public LibuvConnectionManager(LibuvThread thread, IThreadPool threadPool)
@@ -22,15 +20,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             _threadPool = threadPool;
         }
 
-        // This must be called on the libuv event loop
-        public void WalkConnectionsAndClose()
+        public async Task WaitForConnectionCloseAsync()
         {
-            if (_connectionStopTasks != null)
-            {
-                throw new InvalidOperationException($"{nameof(WalkConnectionsAndClose)} cannot be called twice.");
-            }
+            await _thread;
 
-            _connectionStopTasks = new List<Task>();
+            var connectionStopTasks = new List<Task>();
 
             _thread.Walk(ptr =>
             {
@@ -39,18 +33,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
 
                 if (connection != null)
                 {
-                    _connectionStopTasks.Add(connection.StopAsync());
+                    connectionStopTasks.Add(connection.StopAsync());
                 }
             });
 
-            _threadPool.Complete(_tcs);
-        }
+            await _threadPool;
 
-        public async Task WaitForConnectionCloseAsync()
-        {
-            await _tcs.Task.ConfigureAwait(false);
-
-            await Task.WhenAll(_connectionStopTasks).ConfigureAwait(false);
+            await Task.WhenAll(connectionStopTasks).ConfigureAwait(false);
         }
     }
 }
