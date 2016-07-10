@@ -61,19 +61,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     int buffers;
                     BytesBetween(start, end, out bytes, out buffers);
 
-                    if (bytes == 0)
-                    {
-                        continue;
-                    }
-
                     var req = LibuvThread.AllocateWriteReq();
 
                     _currentWriteReq = req;
 
                     try
                     {
-                        int status = await req.Write(Socket, start, end, buffers);
-                        Log.ConnectionWriteCallback(ConnectionId, status);
+                        if (bytes > 0)
+                        {
+                            int status = await req.Write(Socket, start, end, buffers);
+                            Log.ConnectionWriteCallback(ConnectionId, status);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -84,6 +82,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     {
                         Channel.EndRead(end);
 
+                        _currentSpan = default(MemoryPoolSpan);
                         _currentWriteReq = null;
 
                         // Return the request to the pool
