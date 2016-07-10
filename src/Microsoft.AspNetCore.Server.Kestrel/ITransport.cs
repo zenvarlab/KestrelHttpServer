@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Server.Kestrel.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel
 {
@@ -10,12 +6,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel
     {
         void Initialize(ServiceContext serviceContext);
         IDisposable CreateListener(ListenerContext context);
-    }
-
-    public class ListenerContext
-    {
-        public ServerAddress Address { get; set; }
-
-        public IConnectionInitializer ConnectionInitializer { get; set; }
     }
 }
