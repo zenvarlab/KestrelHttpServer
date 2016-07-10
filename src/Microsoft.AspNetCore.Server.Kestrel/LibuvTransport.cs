@@ -98,16 +98,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     if (single)
                     {
                         var listener = usingPipes ?
-                            (LibuvListener)new PipeListener(listenerContext.ServiceContext) :
-                            new LibuvTcpListener(listenerContext.ServiceContext);
+                            (LibuvListener)new PipeListener(_serviceContext) :
+                            new LibuvTcpListener(_serviceContext);
                         listeners.Add(listener);
                         listener.StartAsync(address, thread, listenerContext.ConnectionInitializer).Wait();
                     }
                     else if (first)
                     {
                         var listener = usingPipes
-                            ? (LibuvListenerPrimary)new PipeListenerPrimary(listenerContext.ServiceContext)
-                            : new LibuvTcpListenerPrimary(listenerContext.ServiceContext);
+                            ? (LibuvListenerPrimary)new PipeListenerPrimary(_serviceContext)
+                            : new LibuvTcpListenerPrimary(_serviceContext);
 
                         listeners.Add(listener);
                         listener.StartAsync(pipeName, address, thread, listenerContext.ConnectionInitializer).Wait();
@@ -115,8 +115,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                     else
                     {
                         var listener = usingPipes
-                            ? (LibuvListenerSecondary)new PipeListenerSecondary(listenerContext.ServiceContext)
-                            : new LibuvTcpListenerSecondary(listenerContext.ServiceContext);
+                            ? (LibuvListenerSecondary)new PipeListenerSecondary(_serviceContext)
+                            : new LibuvTcpListenerSecondary(_serviceContext);
                         listeners.Add(listener);
                         listener.StartAsync(pipeName, address, thread, listenerContext.ConnectionInitializer).Wait();
                     }

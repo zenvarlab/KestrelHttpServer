@@ -43,8 +43,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 _address = ServerAddress.FromUrl(serverAddress);
                 _server = _engine.CreateServer(new ListenerContext
                 {
-                    Address = _address,
-                    ServiceContext = context
+                    Address = _address
                 });
             }
             catch

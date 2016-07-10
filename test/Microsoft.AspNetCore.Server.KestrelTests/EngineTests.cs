@@ -90,8 +90,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var address = ServerAddress.FromUrl("http://127.0.0.1:0/");
             var started = engine.CreateServer(new ListenerContext
             {
-                Address = address,
-                ServiceContext = testContext
+                Address = address
             });
             started.Dispose();
             engine.Dispose();
@@ -107,8 +106,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             var address = ServerAddress.FromUrl("http://127.0.0.1:0/");
             var started = engine.CreateServer(new ListenerContext
             {
-                Address = address,
-                ServiceContext = testContext
+                Address = address
             });
 
             var socket = TestConnection.CreateConnectedLoopbackSocket(address.Port);

@@ -118,8 +118,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                         var listenerContext = new ListenerContext
                         {
                             Address = parsedAddress,
-                            ConnectionInitializer = initializer,
-                            ServiceContext = serviceContext
+                            ConnectionInitializer = initializer
                         };
 
                         _disposables.Push(initializer);
@@ -141,8 +140,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                             var listenerContext = new ListenerContext
                             {
                                 Address = ipv4Address,
-                                ConnectionInitializer = initializer,
-                                ServiceContext = serviceContext
+                                ConnectionInitializer = initializer
                             };
 
                             _disposables.Push(initializer);
@@ -171,8 +169,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel
                             var listenerContext = new ListenerContext
                             {
                                 Address = ipv6Address,
-                                ConnectionInitializer = initializer,
-                                ServiceContext = serviceContext
+                                ConnectionInitializer = initializer
                             };
                             _disposables.Push(initializer);
                             _disposables.Push(transport.CreateListener(listenerContext));
