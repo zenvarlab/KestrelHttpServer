@@ -10,6 +10,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
     {
         private UvWriteReq _currentWriteReq;
         private MemoryPoolSpan _currentSpan;
+        private int _bytes;
+        private int _buffers;
 
         public LibuvOutput(
             LibuvThread libuvThread,
@@ -64,6 +66,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                     var req = LibuvThread.AllocateWriteReq();
 
                     _currentWriteReq = req;
+                    _bytes = bytes;
+                    _buffers = buffers;
 
                     try
                     {

@@ -92,7 +92,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             }
         }
 
-        private void Complete()
+        private void Complete(bool dispatch = false)
         {
             var awaitableState = Interlocked.Exchange(
                 ref _awaitableState,
@@ -103,7 +103,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Infrastructure
             if (!ReferenceEquals(awaitableState, _awaitableIsCompleted) &&
                 !ReferenceEquals(awaitableState, _awaitableIsNotCompleted))
             {
-                _threadPool.Run(awaitableState);
+                if (dispatch)
+                {
+                    _threadPool.Run(awaitableState);
+                }
+                else
+                {
+                    awaitableState();
+                }
             }
         }
 

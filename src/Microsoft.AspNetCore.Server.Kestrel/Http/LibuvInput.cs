@@ -108,7 +108,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
                 handle.Libuv.Check(status, out error);
             }
 
-            var task = Channel.EndWriteAsync(_iterator);
+            Task task = TaskUtilities.CompletedTask;
 
             if (readCount == 0)
             {
@@ -117,6 +117,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Http
             else
             {
                 _iterator.UpdateEnd(readCount);
+
+                task = Channel.EndWriteAsync(_iterator);
             }
 
             if (errorDone)
