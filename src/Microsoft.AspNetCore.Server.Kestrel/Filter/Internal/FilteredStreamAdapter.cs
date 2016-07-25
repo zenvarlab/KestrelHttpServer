@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
@@ -10,14 +11,13 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
 {
-    public class FilteredStreamAdapter : IDisposable
+    public class FilteredStreamAdapter
     {
         private readonly string _connectionId;
         private readonly Stream _filteredStream;
         private readonly IKestrelTrace _log;
         private readonly MemoryPool _memory;
-        private MemoryPoolBlock _block;
-        private bool _aborted = false;
+        private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
         public FilteredStreamAdapter(
             string connectionId,
@@ -36,66 +36,56 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
             _memory = memory;
         }
 
-        public SocketInput SocketInput { get; private set; }
+        public SocketInput SocketInput { get; }
 
-        public ISocketOutput SocketOutput { get; private set; }
+        public ISocketOutput SocketOutput { get; }
 
-        public Task ReadInputAsync()
+        public async Task ReadInputAsync()
         {
-            _block = _memory.Lease();
-            // Use pooled block for copy
-            return FilterInputAsync(_block).ContinueWith((task, state) =>
+            var block = _memory.Lease();
+
+            try
             {
-                ((FilteredStreamAdapter)state).OnStreamClose(task);
-            }, this);
+                // Use pooled block for copy
+                int bytesRead;
+                while ((bytesRead = await _filteredStream.ReadAsync(block.Array, block.Data.Offset, block.Data.Count, _cts.Token)) != 0)
+                {
+                    SocketInput.IncomingData(block.Array, block.Data.Offset, bytesRead);
+                }
+
+                if (_cts.IsCancellationRequested)
+                {
+                    SocketInput.AbortAwaiting();
+                }
+
+                try
+                {
+                    SocketInput.IncomingFin();
+                }
+                catch (Exception ex)
+                {
+                    _log.LogError(0, ex, "FilteredStreamAdapter.SocketInput.IncomingFin()");
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                SocketInput.AbortAwaiting();
+                _log.LogError("FilteredStreamAdapter.ReadInputAsync canceled.");
+            }
+            catch (Exception ex)
+            {
+                SocketInput.AbortAwaiting();
+                _log.LogError(0, ex, "FilteredStreamAdapter.ReadInputAsync");
+            }
+            finally
+            {
+                _memory.Return(block);
+            }
         }
 
         public void Abort()
         {
-            _aborted = true;
-        }
-
-        public void Dispose()
-        {
-            SocketInput.Dispose();
-        }
-
-        private async Task FilterInputAsync(MemoryPoolBlock block)
-        {
-            int bytesRead;
-            while ((bytesRead = await _filteredStream.ReadAsync(block.Array, block.Data.Offset, block.Data.Count)) != 0)
-            {
-                SocketInput.IncomingData(block.Array, block.Data.Offset, bytesRead);
-            }
-        }
-
-        private void OnStreamClose(Task copyAsyncTask)
-        {
-            _memory.Return(_block);
-
-            if (copyAsyncTask.IsFaulted)
-            {
-                SocketInput.AbortAwaiting();
-                _log.LogError(0, copyAsyncTask.Exception, "FilteredStreamAdapter.CopyToAsync");
-            }
-            else if (copyAsyncTask.IsCanceled)
-            {
-                SocketInput.AbortAwaiting();
-                _log.LogError("FilteredStreamAdapter.CopyToAsync canceled.");
-            }
-            else if (_aborted)
-            {
-                SocketInput.AbortAwaiting();
-            }
-
-            try
-            {
-                SocketInput.IncomingFin();
-            }
-            catch (Exception ex)
-            {
-                _log.LogError(0, ex, "FilteredStreamAdapter.OnStreamClose");
-            }
+            _cts.Cancel();
         }
     }
 }

@@ -32,7 +32,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private readonly UvStreamHandle _socket;
         private readonly Frame _frame;
         private ConnectionFilterContext _filterContext;
-        private LibuvStream _libuvStream;
         private FilteredStreamAdapter _filteredStreamAdapter;
         private Task _readInputTask;
 
@@ -77,47 +76,56 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // Start socket prior to applying the ConnectionFilter
             _socket.ReadStart(_allocCallback, _readCallback, this);
 
-            if (ServerOptions.ConnectionFilter == null)
+            if (ServerOptions.ConnectionFilter != null)
             {
-                _frame.Start();
+                HandleConnectionFilter();
             }
             else
             {
-                _libuvStream = new LibuvStream(SocketInput, SocketOutput);
+                _frame.Start();
+            }
+        }
 
-                _filterContext = new ConnectionFilterContext
+        private async void HandleConnectionFilter()
+        {
+            var stream = new SocketInputOutputStream(SocketInput, SocketOutput);
+
+            _filterContext = new ConnectionFilterContext
+            {
+                Connection = stream,
+                Address = ServerAddress
+            };
+
+            try
+            {
+                await ServerOptions.ConnectionFilter.OnConnectionAsync(_filterContext);
+
+                if (_filterContext.Connection != stream)
                 {
-                    Connection = _libuvStream,
-                    Address = ServerAddress
-                };
+                    _filteredStreamAdapter = new FilteredStreamAdapter(ConnectionId, _filterContext.Connection, Thread.Memory, Log, ThreadPool, _bufferSizeControl);
 
-                try
-                {
-                    ServerOptions.ConnectionFilter.OnConnectionAsync(_filterContext).ContinueWith((task, state) =>
-                    {
-                        var connection = (Connection)state;
+                    _frame.SocketInput = _filteredStreamAdapter.SocketInput;
+                    _frame.SocketOutput = _filteredStreamAdapter.SocketOutput;
 
-                        if (task.IsFaulted)
-                        {
-                            connection.Log.LogError(0, task.Exception, "ConnectionFilter.OnConnection");
-                            connection.ConnectionControl.End(ProduceEndType.SocketDisconnect);
-                        }
-                        else if (task.IsCanceled)
-                        {
-                            connection.Log.LogError("ConnectionFilter.OnConnection Canceled");
-                            connection.ConnectionControl.End(ProduceEndType.SocketDisconnect);
-                        }
-                        else
-                        {
-                            connection.ApplyConnectionFilter();
-                        }
-                    }, this);
+                    _readInputTask = _filteredStreamAdapter.ReadInputAsync();
                 }
-                catch (Exception ex)
-                {
-                    Log.LogError(0, ex, "ConnectionFilter.OnConnection");
-                    ConnectionControl.End(ProduceEndType.SocketDisconnect);
-                }
+
+                _frame.PrepareRequest = _filterContext.PrepareRequest;
+
+                // Reset needs to be called here so prepare request gets applied
+                _frame.Reset();
+
+                _frame.Start();
+            }
+            catch (TaskCanceledException)
+            {
+                Log.LogError("ConnectionFilter.OnConnection Canceled");
+                ConnectionControl.End(ProduceEndType.SocketDisconnect);
+            }
+            catch (Exception ex)
+            {
+                Log.LogError(0, ex, "ConnectionFilter.OnConnection");
+                ConnectionControl.End(ProduceEndType.SocketDisconnect);
             }
         }
 
@@ -140,46 +148,42 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         }
 
         // Called on Libuv thread
-        public virtual void OnSocketClosed()
+        public virtual async void OnSocketClosed()
         {
+            // Disposing the socket means that our read callbacks never get invoked
+            _socket.Dispose();
+
             if (_filteredStreamAdapter != null)
             {
-                _filteredStreamAdapter.Abort();
-                SocketInput.IncomingFin();
-                _readInputTask.ContinueWith((task, state) =>
+                if (!_readInputTask.IsCompleted)
                 {
-                    var connection = (Connection)state;
-                    connection._filterContext.Connection.Dispose();
-                    connection._filteredStreamAdapter.Dispose();
-                    connection.SocketInput.Dispose();
-                }, this);
+                    _filteredStreamAdapter.Abort();
+
+                    SocketInput.IncomingFin();
+
+                    await _readInputTask;
+                }
+
+                // Dispose the stream
+                _filterContext.Connection.Dispose();
+
+                // Dispose the frame's socket input
+                _frame.SocketInput.Dispose();
+
+                // Dispose the connection's socket input
+                SocketInput.Dispose();
+
+                // Only mark the connection as closed after the read task ends
+                _socketClosedTcs.TrySetResult(null);
             }
             else
             {
+                SocketInput.AbortAwaiting();
+
                 SocketInput.Dispose();
+
+                _socketClosedTcs.TrySetResult(null);
             }
-
-            _socketClosedTcs.TrySetResult(null);
-        }
-
-        private void ApplyConnectionFilter()
-        {
-            if (_filterContext.Connection != _libuvStream)
-            {
-                _filteredStreamAdapter = new FilteredStreamAdapter(ConnectionId, _filterContext.Connection, Thread.Memory, Log, ThreadPool, _bufferSizeControl);
-
-                _frame.SocketInput = _filteredStreamAdapter.SocketInput;
-                _frame.SocketOutput = _filteredStreamAdapter.SocketOutput;
-
-                _readInputTask = _filteredStreamAdapter.ReadInputAsync();
-            }
-
-            _frame.PrepareRequest = _filterContext.PrepareRequest;
-
-            // Reset needs to be called here so prepare request gets applied
-            _frame.Reset();
-
-            _frame.Start();
         }
 
         private static Libuv.uv_buf_t AllocCallback(UvStreamHandle handle, int suggestedSize, object state)

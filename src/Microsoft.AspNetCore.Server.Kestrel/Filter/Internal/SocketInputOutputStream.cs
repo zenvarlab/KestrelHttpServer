@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
 {
-    public class LibuvStream : Stream
+    public class SocketInputOutputStream : Stream
     {
         private readonly static Task<int> _initialCachedTask = Task.FromResult(0);
 
@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
 
         private Task<int> _cachedTask = _initialCachedTask;
 
-        public LibuvStream(SocketInput input, ISocketOutput output)
+        public SocketInputOutputStream(SocketInput input, ISocketOutput output)
         {
             _input = input;
             _output = output;

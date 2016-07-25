@@ -315,8 +315,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             lock (_sync)
             {
-                AbortAwaiting();
-
                 if (!_consuming)
                 {
                     ReturnBlocks(_head, null);
