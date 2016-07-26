@@ -73,15 +73,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
         public override int Read(byte[] buffer, int offset, int count)
         {
             int read = _inner.Read(buffer, offset, count);
-            Log("Read", read, buffer, offset);
+            //Log("Read", read, buffer, offset);
             return read;
         }
 
-        public async override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            int read = await _inner.ReadAsync(buffer, offset, count, cancellationToken);
-            Log("ReadAsync", read, buffer, offset);
-            return read;
+            return _inner.ReadAsync(buffer, offset, count, cancellationToken);
+            //Log("ReadAsync", read, buffer, offset);
+            //return read;
         }
 
         public override long Seek(long offset, SeekOrigin origin)
@@ -96,13 +96,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            Log("Write", count, buffer, offset);
+            //Log("Write", count, buffer, offset);
             _inner.Write(buffer, offset, count);
         }
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            Log("WriteAsync", count, buffer, offset);
+            //Log("WriteAsync", count, buffer, offset);
             return _inner.WriteAsync(buffer, offset, count, cancellationToken);
         }
 
