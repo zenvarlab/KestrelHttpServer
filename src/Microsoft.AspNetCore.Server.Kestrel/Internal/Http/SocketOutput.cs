@@ -583,14 +583,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 _writeReq = Self._writeReqPool.Allocate();
 
-                _writeReq.Write(Self._socket, _lockedStart, _lockedEnd, _bufferCount, (req, status, error, state) =>
+                _writeReq.Write(Self._socket, _lockedStart, _lockedEnd, _bufferCount, (req, status, state) =>
                 {
                     var writeContext = (WriteContext)state;
                     writeContext.PoolWriteReq(writeContext._writeReq);
                     writeContext._writeReq = null;
                     writeContext.ScheduleReturnFullyWrittenBlocks();
                     writeContext.WriteStatus = status;
-                    writeContext.WriteError = error;
+
+                    if (status < 0)
+                    {
+                        Exception error;
+                        req.Libuv.Check(status, out error);
+                        writeContext.WriteError = error;
+                    }
+
                     writeContext.DoShutdownIfNeeded();
                 }, this);
 

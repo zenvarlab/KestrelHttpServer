@@ -18,11 +18,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 
         private IntPtr _bufs;
 
-        private Action<UvWriteReq, int, Exception, object> _callback;
+        private Action<UvWriteReq, int, object> _callback;
         private object _state;
         private const int BUFFER_COUNT = 4;
 
         private List<GCHandle> _pins = new List<GCHandle>(BUFFER_COUNT + 1);
+
+        private readonly LibuvAwaitable<UvWriteReq> _awaitable = new LibuvAwaitable<UvWriteReq>();
 
         public UvWriteReq(IKestrelTrace logger) : base(logger)
         {
@@ -39,12 +41,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             _bufs = handle + requestSize;
         }
 
+        public LibuvAwaitable<UvWriteReq> Write(
+            UvStreamHandle handle,
+            MemoryPoolIterator start,
+            MemoryPoolIterator end,
+            int nBuffers)
+        {
+            Write(handle, start, end, nBuffers, LibuvAwaitable<UvWriteReq>.Callback, _awaitable);
+            return _awaitable;
+        }
+
         public unsafe void Write(
             UvStreamHandle handle,
             MemoryPoolIterator start,
             MemoryPoolIterator end,
             int nBuffers,
-            Action<UvWriteReq, int, Exception, object> callback,
+            Action<UvWriteReq, int, object> callback,
             object state)
         {
             try
@@ -100,7 +112,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             UvStreamHandle handle,
             ArraySegment<ArraySegment<byte>> bufs,
             UvStreamHandle sendHandle,
-            Action<UvWriteReq, int, Exception, object> callback,
+            Action<UvWriteReq, int, object> callback,
             object state)
         {
             try
@@ -164,15 +176,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             var state = req._state;
             req._state = null;
 
-            Exception error = null;
-            if (status < 0)
-            {
-                req.Libuv.Check(status, out error);
-            }
-
             try
             {
-                callback(req, status, error, state);
+                callback(req, status, state);
             }
             catch (Exception ex)
             {

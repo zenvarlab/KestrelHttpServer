@@ -103,7 +103,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     dispatchPipe,
                     _dummyMessage,
                     socket,
-                    (write2, status, error, state) =>
+                    (write2, status, state) =>
                     {
                         write2.Dispose();
                         ((UvStreamHandle)state).Dispose();

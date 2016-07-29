@@ -53,7 +53,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             SocketInput = new SocketInput(Thread.Memory, ThreadPool, _bufferSizeControl);
-            SocketOutput = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
+            //SocketOutput = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
+            SocketOutput = new ChannelSocketOutput(Thread, Thread.Memory, ThreadPool, _socket, this, ConnectionId, Log);
 
             var tcpHandle = _socket as UvTcpHandle;
             if (tcpHandle != null)
@@ -272,7 +273,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 case ProduceEndType.SocketShutdown:
                 case ProduceEndType.SocketDisconnect:
                     Log.ConnectionDisconnect(ConnectionId);
-                    ((SocketOutput)SocketOutput).End(endType);
+                    ((ChannelSocketOutput)SocketOutput).End(endType);
                     break;
             }
         }

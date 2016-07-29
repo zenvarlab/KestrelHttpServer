@@ -108,6 +108,33 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
+        public void IncomingComplete(MemoryPoolIterator end)
+        {
+            lock (_sync)
+            {
+                // TODO: Implement throttling
+                //_bufferSizeControl?.Add(count);
+
+                if (_head == null)
+                {
+                    _head = _pinned;
+                }
+                else if (_tail == _pinned)
+                {
+                    // NO-OP: start of data was read directly into _tail
+                }
+                else
+                {
+                    Volatile.Write(ref _tail.Next, _pinned);
+                }
+
+                _tail = end.Block;
+                _pinned = null;
+
+                Complete();
+            }
+        }
+
         public void IncomingDeferred()
         {
             Debug.Assert(_pinned != null);

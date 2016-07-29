@@ -83,7 +83,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                     start,
                     end,
                     1,
-                    (handle, status2, error2, state2) =>
+                    (handle, status2, state2) =>
                     {
                         writeRequest.Dispose();
                         serverConnectionPipe.Dispose();
@@ -180,7 +180,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                     serverConnectionPipe,
                     new ArraySegment<ArraySegment<byte>>(new ArraySegment<byte>[] { new ArraySegment<byte>(new byte[] { 1, 2, 3, 4 }) }),
                     serverConnectionTcp,
-                    (handle2, status2, error2, state2) =>
+                    (handle2, status2, state2) =>
                     {
                         writeRequest.Dispose();
                         serverConnectionTcp.Dispose();
