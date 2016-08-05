@@ -954,7 +954,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 {
                     var nextBlock = pool.Lease();
                     block.End = blockIndex;
-                    Volatile.Write(ref block.Next, nextBlock);
+                    block.Next = nextBlock;
                     block = nextBlock;
 
                     blockIndex = block.Data.Offset;
@@ -1007,7 +1007,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                     {
                         var nextBlock = pool.Lease();
                         block.End = blockIndex;
-                        Volatile.Write(ref block.Next, nextBlock);
+                        block.Next = nextBlock;
                         block = nextBlock;
 
                         blockIndex = block.Data.Offset;

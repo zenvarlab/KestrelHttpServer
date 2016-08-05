@@ -52,7 +52,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         protected List<KeyValuePair<Func<object, Task>, object>> _onCompleted;
 
         private Task _requestProcessingTask;
-        protected volatile bool _requestProcessingStopping; // volatile, see: https://msdn.microsoft.com/en-us/library/x13ttww7.aspx
+        protected bool _requestProcessingStopping; // volatile, see: https://msdn.microsoft.com/en-us/library/x13ttww7.aspx
         protected int _requestAborted;
         private CancellationTokenSource _abortedCts;
         private CancellationToken? _manuallySetRequestAbortToken;
@@ -178,7 +178,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 var cts = _abortedCts;
                 return
                     cts != null ? cts.Token :
-                    (Volatile.Read(ref _requestAborted) == 1) ? new CancellationToken(true) :
+                    _requestAborted == 1 ? new CancellationToken(true) :
                     RequestAbortedSource.Token;
             }
             set
@@ -203,7 +203,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 var cts = LazyInitializer.EnsureInitialized(ref _abortedCts, () => new CancellationTokenSource())
                             ?? new CancellationTokenSource();
 
-                if (Volatile.Read(ref _requestAborted) == 1)
+                if (_requestAborted == 1)
                 {
                     cts.Cancel();
                 }
@@ -313,13 +313,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         public void Start()
         {
             Reset();
-            _requestProcessingTask =
-                Task.Factory.StartNew(
-                    (o) => ((Frame)o).RequestProcessingAsync(),
-                    this,
-                    default(CancellationToken),
-                    TaskCreationOptions.DenyChildAttach,
-                    TaskScheduler.Default);
+            _requestProcessingTask = RequestProcessingAsync();
+            //Task.Factory.StartNew(
+            //    (o) => ((Frame)o).RequestProcessingAsync(),
+            //    this,
+            //    default(CancellationToken),
+            //    TaskCreationOptions.DenyChildAttach,
+            //    TaskScheduler.Default);
         }
 
         /// <summary>
@@ -380,7 +380,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public void OnStarting(Func<object, Task> callback, object state)
         {
-            lock (_onStartingSync)
+           // lock (_onStartingSync)
             {
                 if (_onStarting == null)
                 {
@@ -392,7 +392,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public void OnCompleted(Func<object, Task> callback, object state)
         {
-            lock (_onCompletedSync)
+           // lock (_onCompletedSync)
             {
                 if (_onCompleted == null)
                 {
@@ -405,7 +405,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         protected async Task FireOnStarting()
         {
             List<KeyValuePair<Func<object, Task>, object>> onStarting = null;
-            lock (_onStartingSync)
+           // lock (_onStartingSync)
             {
                 onStarting = _onStarting;
                 _onStarting = null;
@@ -429,7 +429,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         protected async Task FireOnCompleted()
         {
             List<KeyValuePair<Func<object, Task>, object>> onCompleted = null;
-            lock (_onCompletedSync)
+           // lock (_onCompletedSync)
             {
                 onCompleted = _onCompleted;
                 _onCompleted = null;

@@ -44,7 +44,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 return;
             }
 
-            lock (_lock)
+           // lock (_lock)
             {
                 Size += count;
                 if (!_connectionPaused && Size >= _maxSize)
@@ -67,7 +67,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 return;
             }
 
-            lock (_lock)
+           // lock (_lock)
             {
                 Size -= count;
                 if (_connectionPaused && Size < _maxSize)

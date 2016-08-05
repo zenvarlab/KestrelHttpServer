@@ -60,33 +60,38 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
 
         public void Run(Action action)
         {
-            ThreadPool.QueueUserWorkItem(_runAction, action);
+            action();
+            //ThreadPool.QueueUserWorkItem(_runAction, action);
         }
 
         public void Complete(TaskCompletionSource<object> tcs)
         {
-            ThreadPool.QueueUserWorkItem(_completeTcs, tcs);
+            tcs.TrySetResult(null);
+            //ThreadPool.QueueUserWorkItem(_completeTcs, tcs);
         }
 
         public void Cancel(TaskCompletionSource<object> tcs)
         {
-            ThreadPool.QueueUserWorkItem(_cancelTcs, tcs);
+            tcs.TrySetCanceled();
+            //ThreadPool.QueueUserWorkItem(_cancelTcs, tcs);
         }
 
         public void Error(TaskCompletionSource<object> tcs, Exception ex)
         {
+            tcs.TrySetException(ex);
+
             // ex and _log are closure captured 
-            ThreadPool.QueueUserWorkItem((o) =>
-            {
-                try
-                {
-                    ((TaskCompletionSource<object>)o).TrySetException(ex);
-                }
-                catch (Exception e)
-                {
-                    _log.LogError(0, e, "LoggingThreadPool.Error");
-                }
-            }, tcs);
+            //ThreadPool.QueueUserWorkItem((o) =>
+            //{
+            //    try
+            //    {
+            //        ((TaskCompletionSource<object>)o).TrySetException(ex);
+            //    }
+            //    catch (Exception e)
+            //    {
+            //        _log.LogError(0, e, "LoggingThreadPool.Error");
+            //    }
+            //}, tcs);
         }
     }
 }

@@ -91,7 +91,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             TaskCompletionSource<object> tcs = null;
             var scheduleWrite = false;
 
-            lock (_contextLock)
+           // lock (_contextLock)
             {
                 if (_socket.IsClosed)
                 {
@@ -228,7 +228,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public MemoryPoolIterator ProducingStart()
         {
-            lock (_returnLock)
+           // lock (_returnLock)
             {
                 Debug.Assert(_lastStart.IsDefault);
 
@@ -253,7 +253,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             int bytesProduced, buffersIncluded;
             BytesBetween(_lastStart, end, out bytesProduced, out buffersIncluded);
 
-            lock (_contextLock)
+           // lock (_contextLock)
             {
                 _numBytesPreCompleted += bytesProduced;
             }
@@ -265,7 +265,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             MemoryPoolBlock blockToReturn = null;
 
-            lock (_returnLock)
+           // lock (_returnLock)
             {
                 // Both ProducingComplete and WriteAsync should not call this method
                 // if _lastStart was not set.
@@ -288,13 +288,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (blockToReturn != null)
             {
-                ThreadPool.QueueUserWorkItem(_returnBlocks, blockToReturn);
+                //ThreadPool.QueueUserWorkItem(_returnBlocks, blockToReturn);
+                _returnBlocks(blockToReturn);
             }
         }
 
         private void CancellationTriggered()
         {
-            lock (_contextLock)
+           // lock (_contextLock)
             {
                 if (!_cancelled)
                 {
@@ -331,7 +332,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             WriteContext writingContext = null;
 
-            if (Monitor.TryEnter(_contextLock))
+            //if (Monitor.TryEnter(_contextLock))
             {
                 _postingWrite = false;
 
@@ -345,12 +346,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     _ongoingWrites--;
                 }
 
-                Monitor.Exit(_contextLock);
+                //Monitor.Exit(_contextLock);
             }
-            else
-            {
-                ScheduleWrite();
-            }
+            //else
+            //{
+            //    ScheduleWrite();
+            //}
 
             if (writingContext != null)
             {
@@ -465,7 +466,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         // This is called on the libuv event loop
         private void ReturnAllBlocks()
         {
-            lock (_returnLock)
+           // lock (_returnLock)
             {
                 var block = _head;
                 while (block != _tail)
@@ -645,7 +646,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             public void CompleteWithContextLock()
             {
-                if (Monitor.TryEnter(Self._contextLock))
+                //if (Monitor.TryEnter(Self._contextLock))
                 {
                     try
                     {
@@ -653,18 +654,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                     finally
                     {
-                        Monitor.Exit(Self._contextLock);
+                        //Monitor.Exit(Self._contextLock);
                     }
                 }
-                else
-                {
-                    ThreadPool.QueueUserWorkItem(_completeWrite, this);
-                }
+                //else
+                //{
+                //    ThreadPool.QueueUserWorkItem(_completeWrite, this);
+                //}
             }
 
             public void CompleteOnThreadPool()
             {
-                lock (Self._contextLock)
+               // lock (Self._contextLock)
                 {
                     try
                     {
@@ -697,7 +698,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
                 block.Next = null;
 
-                ThreadPool.QueueUserWorkItem(_returnWrittenBlocks, _lockedStart.Block);
+                //ThreadPool.QueueUserWorkItem(_returnWrittenBlocks, _lockedStart.Block);
+                _returnWrittenBlocks(_lockedStart.Block);
             }
 
             private static void ReturnWrittenBlocks(MemoryPoolBlock block)

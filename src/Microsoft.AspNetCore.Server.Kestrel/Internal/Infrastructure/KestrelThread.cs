@@ -30,6 +30,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private readonly KestrelEngine _engine;
         private readonly IApplicationLifetime _appLifetime;
         private readonly Thread _thread;
+        private readonly int _threadId;
         private readonly TaskCompletionSource<object> _threadTcs = new TaskCompletionSource<object>();
         private readonly UvLoopHandle _loop;
         private readonly UvAsyncHandle _post;
@@ -56,6 +57,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             _loop = new UvLoopHandle(_log);
             _post = new UvAsyncHandle(_log);
             _thread = new Thread(ThreadStart);
+            _threadId = _thread.ManagedThreadId;
             _thread.Name = "KestrelThread - libuv";
 #if !DEBUG
             // Mark the thread as being as unimportant to keeping the process alive.
@@ -199,6 +201,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         public void Post(Action<object> callback, object state)
         {
+            if (Thread.CurrentThread.ManagedThreadId == _threadId)
+            {
+                callback(state);
+                return;
+            }
+
             lock (_workSync)
             {
                 _workAdding.Enqueue(new Work
@@ -218,6 +226,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         public Task PostAsync(Action<object> callback, object state)
         {
+            if (Thread.CurrentThread.ManagedThreadId == _threadId)
+            {
+                callback(state);
+                return TaskUtilities.CompletedTask;
+            }
+
             var tcs = new TaskCompletionSource<object>();
             lock (_workSync)
             {
