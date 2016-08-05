@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -14,20 +15,23 @@ namespace SampleApp
     {
         public void Configure(IApplicationBuilder app, ILoggerFactory loggerFactory)
         {
-            loggerFactory.AddConsole(LogLevel.Trace);
-            var logger = loggerFactory.CreateLogger("Default");
+            //loggerFactory.AddConsole(LogLevel.Trace);
+            //var logger = loggerFactory.CreateLogger("Default");
+            var response = $"hello, world{Environment.NewLine}";
+            var responseBytes = Encoding.ASCII.GetBytes(response);
+            var responseLength = responseBytes.Length;
+            var responseLengthString = responseBytes.Length.ToString();
 
             app.Run(async context =>
             {
                 var connectionFeature = context.Connection;
-                logger.LogDebug($"Peer: {connectionFeature.RemoteIpAddress?.ToString()}:{connectionFeature.RemotePort}"
-                    + $"{Environment.NewLine}"
-                    + $"Sock: {connectionFeature.LocalIpAddress?.ToString()}:{connectionFeature.LocalPort}");
+                //logger.LogDebug($"Peer: {connectionFeature.RemoteIpAddress?.ToString()}:{connectionFeature.RemotePort}"
+                //    + $"{Environment.NewLine}"
+                //    + $"Sock: {connectionFeature.LocalIpAddress?.ToString()}:{connectionFeature.LocalPort}");
 
-                var response = $"hello, world{Environment.NewLine}";
-                context.Response.ContentLength = response.Length;
+                context.Response.Headers["Content-Length"] = responseLengthString;
                 context.Response.ContentType = "text/plain";
-                await context.Response.WriteAsync(response);
+                await context.Response.Body.WriteAsync(responseBytes, 0, responseLength);
             });
         }
 
@@ -38,10 +42,10 @@ namespace SampleApp
                 {
                     // options.ThreadCount = 4;
                     options.NoDelay = true;
-                    options.UseHttps("testCert.pfx", "testPassword");
-                    options.UseConnectionLogging();
+                    //options.UseHttps("testCert.pfx", "testPassword");
+                    //options.UseConnectionLogging();
                 })
-                .UseUrls("http://localhost:5000", "https://localhost:5001")
+                .UseUrls("http://*:5000")
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>()
                 .Build();
