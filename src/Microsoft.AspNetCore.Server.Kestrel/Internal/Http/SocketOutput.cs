@@ -188,18 +188,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
                 }
 
-                if (!_postingWrite && _ongoingWrites < _maxPendingWrites)
-                {
-                    _postingWrite = true;
-                    _ongoingWrites++;
-                    scheduleWrite = true;
-                }
+                //if (!_postingWrite && _ongoingWrites < _maxPendingWrites)
+                //{
+                //    _postingWrite = true;
+                //    _ongoingWrites++;
+                //    scheduleWrite = true;
+                //}
             }
 
-            if (scheduleWrite)
-            {
-                ScheduleWrite();
-            }
+            //if (scheduleWrite)
+            //{
+            //    ScheduleWrite();
+            //}
 
             // Return TaskCompletionSource's Task if set, otherwise completed Task 
             return tcs?.Task ?? TaskUtilities.CompletedTask;
@@ -321,7 +321,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        private void ScheduleWrite()
+        public void ScheduleWrite()
         {
             _thread.Post(state => ((SocketOutput)state).WriteAllPending(), this);
         }
