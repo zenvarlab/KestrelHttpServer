@@ -22,6 +22,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private string _pipeName;
         private IntPtr _fileCompletionInfoPtr;
         private bool _tryDetachFromIOCP = PlatformApis.IsWindows;
+        private static bool _triedDetachFromIOCP;
 
         // this message is passed to write2 because it must be non-zero-length,
         // but it has no other functional significance
@@ -133,7 +134,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             {
                 // Replacing IOCP information is only supported on Windows 8.1 or newer
                 _tryDetachFromIOCP = false;
+                if (!_triedDetachFromIOCP)
+                {
+                    Console.WriteLine("!!!!!!!!!!!!!!!FAILED TO DETATCH FROM IOCP!!!!!!!!!!!!");
+                }
             }
+            else
+            {
+                if (!_triedDetachFromIOCP)
+                {
+                    Console.WriteLine("DETATCHED FROM IOCP");
+                }
+            }
+
+            _triedDetachFromIOCP = true;
         }
 
         private struct IO_STATUS_BLOCK
