@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -33,8 +34,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private readonly TaskCompletionSource<object> _threadTcs = new TaskCompletionSource<object>();
         private readonly UvLoopHandle _loop;
         private readonly UvAsyncHandle _post;
-        private Queue<Work> _workAdding = new Queue<Work>(1024);
-        private Queue<Work> _workRunning = new Queue<Work>(1024);
+        private ConcurrentQueue<Work> _workAdding = new ConcurrentQueue<Work>();
+        private ConcurrentQueue<Work> _workRunning = new ConcurrentQueue<Work>();
         private Queue<CloseHandle> _closeHandleAdding = new Queue<CloseHandle>(256);
         private Queue<CloseHandle> _closeHandleRunning = new Queue<CloseHandle>(256);
         private readonly object _workSync = new object();
@@ -155,7 +156,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                 {
                     var listener = (KestrelThread)state;
                     listener.WriteReqPool.Dispose();
-                },
+                }, 
                 this), _shutdownTimeout).ConfigureAwait(false);
 
                 if (!result)
@@ -199,15 +200,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         public void Post(Action<object> callback, object state)
         {
-            lock (_workSync)
+            _workAdding.Enqueue(new Work
             {
-                _workAdding.Enqueue(new Work
-                {
-                    CallbackAdapter = _postCallbackAdapter,
-                    Callback = callback,
-                    State = state
-                });
-            }
+                CallbackAdapter = _postCallbackAdapter,
+                Callback = callback,
+                State = state
+            });
             _post.Send();
         }
 
@@ -219,16 +217,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         public Task PostAsync(Action<object> callback, object state)
         {
             var tcs = new TaskCompletionSource<object>();
-            lock (_workSync)
+            _workAdding.Enqueue(new Work
             {
-                _workAdding.Enqueue(new Work
-                {
-                    CallbackAdapter = _postAsyncCallbackAdapter,
-                    Callback = callback,
-                    State = state,
-                    Completion = tcs
-                });
-            }
+                CallbackAdapter = _postAsyncCallbackAdapter,
+                Callback = callback,
+                State = state,
+                Completion = tcs
+            });
             _post.Send();
             return tcs.Task;
         }
@@ -322,19 +317,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         private bool DoPostWork()
         {
-            Queue<Work> queue;
-            lock (_workSync)
-            {
-                queue = _workAdding;
-                _workAdding = _workRunning;
-                _workRunning = queue;
-            }
+            _workRunning = Interlocked.Exchange(ref _workAdding, _workRunning);
 
-            bool wasWork = queue.Count > 0;
+            bool wasWork = false;
 
-            while (queue.Count != 0)
+            Work work;
+            while (_workRunning.TryDequeue(out work))
             {
-                var work = queue.Dequeue();
+                wasWork = true;
                 try
                 {
                     work.CallbackAdapter(work.Callback, work.State);
@@ -406,6 +396,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         {
             public Action<IntPtr> Callback;
             public IntPtr Handle;
+        }
+
+        public void SignalPost()
+        {
+            _post.Send();
         }
     }
 }
