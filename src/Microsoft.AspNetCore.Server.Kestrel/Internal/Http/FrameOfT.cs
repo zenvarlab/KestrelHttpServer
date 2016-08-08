@@ -53,8 +53,13 @@ Hello, World!");
                     {
                         if (!SocketInput.CheckFinOrThrow())
                         {
+                            await SocketInput;
 
-                            read += await SocketInput.ReadAsync(requestBytes, read, requestSize - read);
+                            var scan = SocketInput.ConsumingStart();
+                            int actual;
+                            scan = scan.CopyTo(requestBytes, read, requestSize - read, out actual);
+                            read += actual;
+                            SocketInput.ConsumingComplete(scan, scan);
                             if (read == requestSize)
                             {
                                 await SocketOutput.WriteAsync(new ArraySegment<byte>(_response));
