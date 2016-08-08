@@ -397,10 +397,5 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             public Action<IntPtr> Callback;
             public IntPtr Handle;
         }
-
-        public void SignalPost()
-        {
-            _post.Send();
-        }
     }
 }

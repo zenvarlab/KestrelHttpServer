@@ -14,8 +14,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 {
     public class KestrelEngine : ServiceContext, IDisposable
     {
-        private Thread _postThread;
-        private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         public KestrelEngine(ServiceContext context)
             : this(new Libuv(), context)
         { }
@@ -37,31 +35,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             {
                 Threads.Add(new KestrelThread(this));
             }
-            _postThread = new Thread(() =>
-            {
-                var token = _cancellationTokenSource.Token;
-                while (!token.IsCancellationRequested)
-                {
-                    foreach (var kestrelThread in Threads)
-                    {
-                        kestrelThread.SignalPost();
-                    }
-                }
-            })
-            {
-                IsBackground = true
-            };
             foreach (var thread in Threads)
             {
                 thread.StartAsync().Wait();
             }
-            _postThread.Start();
         }
 
         public void Dispose()
         {
             Task.WaitAll(Threads.Select(thread => thread.StopAsync(TimeSpan.FromSeconds(2.5))).ToArray());
-            _cancellationTokenSource.Cancel();
             Threads.Clear();
 #if DEBUG
             GC.Collect();
