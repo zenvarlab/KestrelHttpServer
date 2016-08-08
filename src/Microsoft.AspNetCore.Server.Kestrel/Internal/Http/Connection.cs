@@ -49,7 +49,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (ServerOptions.Limits.MaxRequestBufferSize.HasValue)
             {
-                _bufferSizeControl = new BufferSizeControl(ServerOptions.Limits.MaxRequestBufferSize.Value, this, Thread);
+                //_bufferSizeControl = new BufferSizeControl(ServerOptions.Limits.MaxRequestBufferSize.Value, this, Thread);
             }
 
             SocketOutput = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
