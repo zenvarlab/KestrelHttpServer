@@ -71,7 +71,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public void IncomingComplete(int count, Exception error)
         {
-            lock (_sync)
+          //  lock (_sync)
             {
                 // Must call Add() before bytes are available to consumer, to ensure that Length is >= 0
                 _bufferSizeControl?.Add(count);
@@ -142,7 +142,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public MemoryPoolIterator ConsumingStart()
         {
-            lock (_sync)
+           // lock (_sync)
             {
                 if (_consuming)
                 {
@@ -160,7 +160,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             MemoryPoolBlock returnStart = null;
             MemoryPoolBlock returnEnd = null;
 
-            lock (_sync)
+           // lock (_sync)
             {
                 if (!_disposed)
                 {
@@ -277,7 +277,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public void Dispose()
         {
-            lock (_sync)
+           // lock (_sync)
             {
                 AbortAwaiting();
 
