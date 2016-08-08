@@ -52,8 +52,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _bufferSizeControl = new BufferSizeControl(ServerOptions.Limits.MaxRequestBufferSize.Value, this, Thread);
             }
 
+            SocketInput = new SocketInput(Thread.Memory, ThreadPool, _bufferSizeControl);
             SocketOutput = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
-            SocketInput = new SocketInput(Thread.Memory, ThreadPool, _bufferSizeControl, (SocketOutput)SocketOutput);
 
             var tcpHandle = _socket as UvTcpHandle;
             if (tcpHandle != null)

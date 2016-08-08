@@ -32,15 +32,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         private bool _disposed;
 
         private TaskCompletionSource<object> _tcs = new TaskCompletionSource<object>();
-        private SocketOutput _output;
 
-        public SocketInput(MemoryPool memory, IThreadPool threadPool, IBufferSizeControl bufferSizeControl = null, SocketOutput output = null)
+        public SocketInput(MemoryPool memory, IThreadPool threadPool, IBufferSizeControl bufferSizeControl = null)
         {
             _memory = memory;
             _threadPool = threadPool;
             _bufferSizeControl = bufferSizeControl;
             _awaitableState = _awaitableIsNotCompleted;
-            _output = output;
         }
 
         public bool IsCompleted => ReferenceEquals(_awaitableState, _awaitableIsCompleted);
@@ -238,7 +236,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (ReferenceEquals(awaitableState, _awaitableIsNotCompleted))
             {
-                _output?.ScheduleWrite();
                 return;
             }
             else if (ReferenceEquals(awaitableState, _awaitableIsCompleted))

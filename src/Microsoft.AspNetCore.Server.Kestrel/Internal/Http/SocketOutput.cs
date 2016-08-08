@@ -147,8 +147,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
 
                 if (_lastWriteError == null &&
-                    _tasksPending.Count == 0 &&
-                    _numBytesPreCompleted + buffer.Count <= _maxBytesPreCompleted)
+                        _tasksPending.Count == 0 &&
+                        _numBytesPreCompleted + buffer.Count <= _maxBytesPreCompleted)
                 {
                     // Complete the write task immediately if all previous write tasks have been completed,
                     // the buffers haven't grown too large, and the last write to the socket succeeded.
@@ -180,8 +180,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     else
                     {
                         tcs = new TaskCompletionSource<object>();
-                        _tasksPending.Enqueue(new WaitingTask()
-                        {
+                        _tasksPending.Enqueue(new WaitingTask() {
                             IsSync = isSync,
                             BytesToWrite = buffer.Count,
                             CompletionSource = tcs
@@ -196,10 +195,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     scheduleWrite = true;
                 }
             }
-            //if (scheduleWrite)
-            //{
-            //    ScheduleWrite();
-            //}
+
+            if (scheduleWrite)
+            {
+                ScheduleWrite();
+            }
 
             // Return TaskCompletionSource's Task if set, otherwise completed Task 
             return tcs?.Task ?? TaskUtilities.CompletedTask;
@@ -321,7 +321,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        public void ScheduleWrite()
+        private void ScheduleWrite()
         {
             _thread.Post(state => ((SocketOutput)state).WriteAllPending(), this);
         }
