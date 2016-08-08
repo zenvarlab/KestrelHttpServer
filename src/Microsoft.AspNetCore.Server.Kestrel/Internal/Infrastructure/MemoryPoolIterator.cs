@@ -100,20 +100,21 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             } while (true);
         }
 
-        public void Skip(int bytesToSkip)
+        public int Skip(int bytesToSkip)
         {
             if (_block == null)
             {
-                return;
+                return 0;
             }
 
+            var orig = bytesToSkip;
             var wasLastBlock = _block.Next == null;
             var following = _block.End - _index;
 
             if (following >= bytesToSkip)
             {
                 _index += bytesToSkip;
-                return;
+                return bytesToSkip;
             }
 
             var block = _block;
@@ -122,7 +123,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 if (wasLastBlock)
                 {
-                    throw new InvalidOperationException("Attempted to skip more bytes than available.");
+                    //throw new InvalidOperationException("Attempted to skip more bytes than available.");
+                    return orig - bytesToSkip;
                 }
                 else
                 {
@@ -138,7 +140,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
                 {
                     _block = block;
                     _index = index + bytesToSkip;
-                    return;
+                    return orig;
                 }
             }
         }

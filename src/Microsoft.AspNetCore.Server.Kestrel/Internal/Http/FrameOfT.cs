@@ -57,7 +57,7 @@ Hello, World!");
 
                             var scan = SocketInput.ConsumingStart();
                             int actual;
-                            scan = scan.CopyTo(requestBytes, read, requestSize - read, out actual);
+                            actual = scan.Skip(requestSize - read);
                             read += actual;
                             SocketInput.ConsumingComplete(scan, scan);
                             if (read == requestSize)
