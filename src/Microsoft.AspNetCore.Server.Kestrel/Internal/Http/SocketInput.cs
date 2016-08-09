@@ -53,7 +53,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public MemoryPoolBlock IncomingStart()
         {
-            const int minimumSize = 2048;
+            const int minimumSize = 2048 * 8;
 
             if (_tail != null && minimumSize <= _tail.Data.Offset + _tail.Data.Count - _tail.End)
             {
