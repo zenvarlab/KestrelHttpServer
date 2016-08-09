@@ -136,7 +136,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             if (!ReferenceEquals(awaitableState, _awaitableIsCompleted) &&
                 !ReferenceEquals(awaitableState, _awaitableIsNotCompleted))
             {
-                _threadPool.Run(awaitableState);
+                awaitableState();//_threadPool.Run(awaitableState);
             }
         }
 
