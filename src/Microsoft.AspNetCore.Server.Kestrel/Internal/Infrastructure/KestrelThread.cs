@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -34,8 +33,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private readonly TaskCompletionSource<object> _threadTcs = new TaskCompletionSource<object>();
         private readonly UvLoopHandle _loop;
         private readonly UvAsyncHandle _post;
-        private ConcurrentQueue<Work> _workAdding = new ConcurrentQueue<Work>();
-        private ConcurrentQueue<Work> _workRunning = new ConcurrentQueue<Work>();
+        private Queue<Work> _workAdding = new Queue<Work>(1024);
+        private Queue<Work> _workRunning = new Queue<Work>(1024);
         private Queue<CloseHandle> _closeHandleAdding = new Queue<CloseHandle>(256);
         private Queue<CloseHandle> _closeHandleRunning = new Queue<CloseHandle>(256);
         private readonly object _workSync = new object();
@@ -201,12 +200,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         public void Post(Action<object> callback, object state)
         {
-            _workAdding.Enqueue(new Work
+            lock (_workSync)
             {
-                CallbackAdapter = _postCallbackAdapter,
-                Callback = callback,
-                State = state
-            });
+                _workAdding.Enqueue(new Work
+                {
+                    CallbackAdapter = _postCallbackAdapter,
+                    Callback = callback,
+                    State = state
+                });
+            }
             if (Interlocked.CompareExchange(ref _posted, 0, 1) == 0)
             {
                 _post.Send();
@@ -221,13 +223,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         public Task PostAsync(Action<object> callback, object state)
         {
             var tcs = new TaskCompletionSource<object>();
-            _workAdding.Enqueue(new Work
+            lock (_workSync)
             {
-                CallbackAdapter = _postAsyncCallbackAdapter,
-                Callback = callback,
-                State = state,
-                Completion = tcs
-            });
+                _workAdding.Enqueue(new Work
+                {
+                    CallbackAdapter = _postAsyncCallbackAdapter,
+                    Callback = callback,
+                    State = state,
+                    Completion = tcs
+                });
+            }
             if (Interlocked.CompareExchange(ref _posted, 0, 1) == 0)
             {
                 _post.Send();
@@ -249,7 +254,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private void PostCloseHandle(Action<IntPtr> callback, IntPtr handle)
         {
             EnqueueCloseHandle(callback, handle);
-            _post.Send();
+            if (Interlocked.CompareExchange(ref _posted, 0, 1) == 0)
+            {
+                _post.Send();
+            }
         }
 
         private void EnqueueCloseHandle(Action<IntPtr> callback, IntPtr handle)
@@ -312,7 +320,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         private void OnPost()
         {
-            Interlocked.CompareExchange(ref _posted, 1, 0);
             var loopsRemaining = _maxLoops;
             bool wasWork;
             do
@@ -321,18 +328,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                 wasWork = DoPostCloseHandle() || wasWork;
                 loopsRemaining--;
             } while (wasWork && loopsRemaining > 0);
+            Volatile.Write(ref _posted, 1);
         }
 
         private bool DoPostWork()
         {
-            _workRunning = Interlocked.Exchange(ref _workAdding, _workRunning);
-
-            bool wasWork = false;
-
-            Work work;
-            while (_workRunning.TryDequeue(out work))
+            Queue<Work> queue;
+            lock (_workSync)
             {
-                wasWork = true;
+                queue = _workAdding;
+                _workAdding = _workRunning;
+                _workRunning = queue;
+            }
+
+            bool wasWork = queue.Count > 0;
+
+            while (queue.Count != 0)
+            {
+                var work = queue.Dequeue();
                 try
                 {
                     work.CallbackAdapter(work.Callback, work.State);
