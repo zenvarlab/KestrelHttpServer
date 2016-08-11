@@ -208,7 +208,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                     State = state
                 });
             }
-            _post.Send();
+            //_post.Send();
         }
 
         private void Post(Action<KestrelThread> callback)
@@ -229,7 +229,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
                     Completion = tcs
                 });
             }
-            _post.Send();
+            //_post.Send();
             return tcs.Task;
         }
 
@@ -247,7 +247,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
         private void PostCloseHandle(Action<IntPtr> callback, IntPtr handle)
         {
             EnqueueCloseHandle(callback, handle);
-            _post.Send();
+            //_post.Send();
         }
 
         private void EnqueueCloseHandle(Action<IntPtr> callback, IntPtr handle)
@@ -279,7 +279,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
             try
             {
-                var ran1 = _loop.Run();
+                while (_loop.Run(2) != 0)
+                {
+                    OnPost();
+                    Thread.Sleep(0);
+                }
+
                 if (_stopImmediate)
                 {
                     // thread-abort form of exit, resources will be leaked
