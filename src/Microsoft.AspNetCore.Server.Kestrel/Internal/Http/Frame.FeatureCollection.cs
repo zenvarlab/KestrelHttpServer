@@ -20,7 +20,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                  IHttpResponseFeature,
                                  IHttpUpgradeFeature,
                                  IHttpConnectionFeature,
-                                 IHttpRequestLifetimeFeature
+                                 IHttpRequestLifetimeFeature,
+                                 IConnectionDataFeature
     {
         // NOTE: When feature interfaces are added to or removed from this Frame class implementation,
         // then the list of `implementedFeatures` in the generated code project MUST also be updated.
@@ -358,6 +359,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         void IHttpRequestLifetimeFeature.Abort()
         {
             Abort();
+        }
+
+
+        private object _data = null;
+        public void SetData(int key, object value)
+        {
+            _data = value;
+        }
+
+        public object GetData(int key)
+        {
+                return _data;
         }
     }
 }
