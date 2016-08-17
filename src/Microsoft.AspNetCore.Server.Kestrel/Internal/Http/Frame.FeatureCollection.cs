@@ -15,7 +15,7 @@ using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
-    public partial class Frame : IFeatureCollection,
+    public partial class Frame : ILazyFeatureCollection,
                                  IHttpRequestFeature,
                                  IHttpResponseFeature,
                                  IHttpUpgradeFeature,
@@ -320,6 +320,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         void IFeatureCollection.Set<TFeature>(TFeature instance)
         {
             FastFeatureSet(typeof(TFeature), instance);
+        }
+
+        void ILazyFeatureCollection.Set<TFeature>(Func<object, TFeature> factory, object state)
+        {
+            FastFeatureFactorySet(typeof(TFeature), factory, state);
         }
 
         void IHttpResponseFeature.OnStarting(Func<object, Task> callback, object state)

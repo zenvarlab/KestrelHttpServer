@@ -72,7 +72,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
     {{{Each(allFeatures, feature => $@"
         private static readonly Type {feature.Name}Type = typeof(global::{feature.FullName});")}
 {Each(allFeatures, feature => $@"
-        private object _current{feature.Name};")}
+        private object _current{feature.Name};
+        private object _state{feature.Name};
+        private Func<object, global::{feature.FullName}> _factory{feature.Name};
+")}
 
         private void FastReset()
         {{{Each(implementedFeatures, feature => $@"
@@ -85,6 +88,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {{{Each(allFeatures, feature => $@"
             if (key == {feature.Name}Type)
             {{
+                if (_current{feature.Name} == null && _factory{feature.Name} != null)
+                {{
+                    _current{feature.Name} = _factory{feature.Name}(_state{feature.Name});
+                }}
                 return _current{feature.Name};
             }}")}
             return ExtraFeatureGet(key);
@@ -102,11 +109,24 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             ExtraFeatureSet(key, feature);
         }}
 
+        private void FastFeatureFactorySet<T>(Type key, Func<object, T> feature, object state)
+        {{
+            _featureRevision++;
+            {Each(allFeatures, feature => $@"
+            if (key == {feature.Name}Type)
+            {{
+                _state{feature.Name} = state;
+                _factory{feature.Name} = feature as Func<object, global::{feature.FullName}>;
+                return;
+            }}")};
+            ExtraFeatureSet(key, feature);
+        }}
+
         private IEnumerable<KeyValuePair<Type, object>> FastEnumerable()
         {{{Each(allFeatures, feature => $@"
             if (_current{feature.Name} != null)
             {{
-                yield return new KeyValuePair<Type, object>({feature.Name}Type, _current{feature.Name} as global::{feature.FullName});
+                yield return new KeyValuePair<Type, object>({feature.Name}Type, (_current{feature.Name} ?? _factory{feature.Name}?.Invoke(_state{feature.Name})) as global::{feature.FullName});
             }}")}
 
             if (MaybeExtra != null)
