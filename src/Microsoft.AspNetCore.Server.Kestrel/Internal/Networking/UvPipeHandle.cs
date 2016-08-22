@@ -24,7 +24,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 
         public void Bind(string name)
         {
-            _uv.pipe_bind(this, name);
+            //_uv.pipe_bind(this, name);
+            _uv.pipe_open(this, (IntPtr)3);
         }
 
         public int PendingCount()

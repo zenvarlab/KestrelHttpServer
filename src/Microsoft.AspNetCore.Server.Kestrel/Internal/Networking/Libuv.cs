@@ -26,6 +26,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
             _uv_tcp_init = NativeMethods.uv_tcp_init;
             _uv_tcp_bind = NativeMethods.uv_tcp_bind;
             _uv_tcp_open = NativeMethods.uv_tcp_open;
+            _uv_pipe_open = NativeMethods.uv_pipe_open;
             _uv_tcp_nodelay = NativeMethods.uv_tcp_nodelay;
             _uv_pipe_init = NativeMethods.uv_pipe_init;
             _uv_pipe_bind = NativeMethods.uv_pipe_bind;
@@ -228,6 +229,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
         {
             handle.Validate();
             Check(_uv_tcp_open(handle, hSocket));
+        }
+
+        protected Func<UvPipeHandle, IntPtr, int> _uv_pipe_open;
+        public void pipe_open(UvPipeHandle handle, IntPtr hSocket)
+        {
+            handle.Validate();
+            Check(_uv_pipe_open(handle, hSocket));
         }
 
         protected Func<UvTcpHandle, int, int> _uv_tcp_nodelay;
@@ -524,6 +532,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 
             [DllImport("libuv", CallingConvention = CallingConvention.Cdecl)]
             public static extern int uv_tcp_open(UvTcpHandle handle, IntPtr hSocket);
+
+            [DllImport("libuv", CallingConvention = CallingConvention.Cdecl)]
+            public static extern int uv_pipe_open(UvPipeHandle handle, IntPtr hSocket);
 
             [DllImport("libuv", CallingConvention = CallingConvention.Cdecl)]
             public static extern int uv_tcp_nodelay(UvTcpHandle handle, int enable);
