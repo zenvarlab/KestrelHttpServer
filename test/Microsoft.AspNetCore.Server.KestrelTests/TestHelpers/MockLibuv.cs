@@ -1,5 +1,9 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
@@ -9,12 +13,20 @@ namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
         private UvAsyncHandle _postHandle;
         private uv_async_cb _onPost;
 
+        private readonly object _postLock = new object();
+        private TaskCompletionSource<object> _onPostTcs = new TaskCompletionSource<object>();
+        private bool _completedOnPostTcs;
+
         private bool _stopLoop;
         private readonly ManualResetEventSlim _loopWh = new ManualResetEventSlim();
+
+        private readonly string _stackTrace;
 
         unsafe public MockLibuv()
             : base(onlyForTesting: true)
         {
+            _stackTrace = Environment.StackTrace;
+
             OnWrite = (socket, buffers, triggerCompleted) =>
             {
                 triggerCompleted(0);
@@ -25,8 +37,18 @@ namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
 
             _uv_async_send = postHandle =>
             {
-                PostCount++;
-                _loopWh.Set();
+                lock (_postLock)
+                {
+                    if (_completedOnPostTcs)
+                    {
+                        _onPostTcs = new TaskCompletionSource<object>();
+                        _completedOnPostTcs = false;
+                    }
+
+                    PostCount++;
+
+                    _loopWh.Set();
+                }
 
                 return 0;
             };
@@ -44,8 +66,24 @@ namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
                 while (!_stopLoop)
                 {
                     _loopWh.Wait();
-                    _loopWh.Reset();
-                    _onPost(_postHandle.InternalGetHandle());
+                    KestrelThreadBlocker.Wait();
+                    TaskCompletionSource<object> onPostTcs;
+
+                    lock (_postLock)
+                    {
+                        _loopWh.Reset();
+                        _onPost(_postHandle.InternalGetHandle());
+
+                        // Ensure any subsequent calls to uv_async_send
+                        // create a new _onPostTcs to be completed.
+                        onPostTcs = _onPostTcs;
+                        _completedOnPostTcs = true;
+                    }
+
+                    // Calling TrySetResult outside the lock to avoid deadlock
+                    // when the code attempts to call uv_async_send after awaiting
+                    // OnPostTask.
+                    onPostTcs.TrySetResult(null);
                 }
 
                 return 0;
@@ -76,6 +114,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
             _uv_strerror = errno => IntPtr.Zero;
             _uv_read_start = UvReadStart;
             _uv_read_stop = handle => 0;
+            _uv_unsafe_async_send = handle =>
+            {
+                throw new Exception($"Why is this getting called?{Environment.NewLine}{_stackTrace}");
+            };
         }
 
         public Func<UvStreamHandle, int, Action<int>, int> OnWrite { get; set; }
@@ -85,6 +127,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
         public uv_read_cb ReadCallback { get; set; }
 
         public int PostCount { get; set; }
+
+        public Task OnPostTask => _onPostTcs.Task;
+
+        public ManualResetEventSlim KestrelThreadBlocker { get; } = new ManualResetEventSlim(true);
 
         private int UvReadStart(UvStreamHandle handle, uv_alloc_cb allocCallback, uv_read_cb readCallback)
         {
@@ -99,3 +145,4 @@ namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
         }
     }
 }
+
