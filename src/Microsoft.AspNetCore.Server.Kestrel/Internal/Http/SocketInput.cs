@@ -201,8 +201,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     }
 
                     // If _head is null, everything has been consumed and examined.
-                    var examidedAll = (!examined.IsDefault && examined.IsEnd) || _head == null;
-                    if (examidedAll && ReadingInput)
+                    var examinedAll = (!examined.IsDefault && examined.IsEnd) || _head == null;
+                    if (examinedAll && ReadingInput)
                     {
                         _manualResetEvent.Reset();
 

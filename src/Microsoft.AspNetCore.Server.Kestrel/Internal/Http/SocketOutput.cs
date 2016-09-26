@@ -16,9 +16,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
     public class SocketOutput : ISocketOutput
     {
         private const int _maxPendingWrites = 3;
+        // There should be never be more WriteContexts than the max ongoing writes +  1 for the next write to be scheduled.
+        private const int _maxPooledWriteContexts = _maxPendingWrites + 1;
         // Well behaved WriteAsync users should await returned task, so there is no need to allocate more per connection by default
         private const int _initialTaskQueues = 1;
-        private const int _maxPooledWriteContexts = 32;
 
         private static readonly WaitCallback _returnBlocks = (state) => ReturnBlocks((MemoryPoolBlock)state);
         private static readonly Action<object> _connectionCancellation = (state) => ((SocketOutput)state).CancellationTriggered();
