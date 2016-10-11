@@ -466,13 +466,13 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData("HTTP/1.0\r", '\r', true, MemoryPoolIteratorExtensions.Http10Version)]
-        [InlineData("HTTP/1.1\r", '\r', true, MemoryPoolIteratorExtensions.Http11Version)]
-        [InlineData("HTTP/3.0\r", '\r', false, null)]
-        [InlineData("http/1.0\r", '\r', false, null)]
-        [InlineData("http/1.1\r", '\r', false, null)]
-        [InlineData("short ", ' ', false, null)]
-        public void GetsKnownVersion(string input, char endChar, bool expectedResult, string expectedKnownString)
+        [InlineData("HTTP/1.0", true, MemoryPoolIteratorExtensions.Http10Version)]
+        [InlineData("HTTP/1.1", true, MemoryPoolIteratorExtensions.Http11Version)]
+        [InlineData("HTTP/3.0", false, null)]
+        [InlineData("http/1.0", false, null)]
+        [InlineData("http/1.1", false, null)]
+        [InlineData("short ", false, null)]
+        public void GetsKnownVersion(string input, bool expectedResult, string expectedKnownString)
         {
             // Arrange
             var chars = input.ToCharArray().Select(c => (byte)c).ToArray();
@@ -486,8 +486,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         }
 
         [Theory]
-        [InlineData("HTTP/1.0\r", "HTTP/1.0")]
-        [InlineData("HTTP/1.1\r", "HTTP/1.1")]
+        [InlineData("HTTP/1.0", "HTTP/1.0")]
+        [InlineData("HTTP/1.1", "HTTP/1.1")]
         public void KnownVersionsAreInterned(string input, string expected)
         {
             TestKnownStringsInterning(input, expected, MemoryPoolIteratorExtensions.GetKnownVersion);

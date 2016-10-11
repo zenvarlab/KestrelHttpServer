@@ -376,43 +376,43 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             Assert.Equal(431, exception.StatusCode);
         }
 
-        //[Fact]
-        //public void TakeMessageHeadersThrowsWhenHeadersExceedCountLimit()
-        //{
-        //    var trace = new KestrelTrace(new TestKestrelTrace());
-        //    var ltp = new LoggingThreadPool(trace);
-        //    using (var pool = new MemoryPool())
-        //    using (var socketInput = new SocketInput(pool, ltp))
-        //    {
-        //        const string headerLines = "Header-1: value1\r\nHeader-2: value2\r\n";
+        [Fact]
+        public async Task TakeMessageHeadersThrowsWhenHeadersExceedCountLimit()
+        {
+            var trace = new KestrelTrace(new TestKestrelTrace());
+            const string headerLines = "Header-1: value1\r\nHeader-2: value2\r\n";
 
-        //        var options = new KestrelServerOptions();
-        //        options.Limits.MaxRequestHeaderCount = 1;
+            var options = new KestrelServerOptions();
+            options.Limits.MaxRequestHeaderCount = 1;
 
-        //        var serviceContext = new ServiceContext
-        //        {
-        //            DateHeaderValueManager = new DateHeaderValueManager(),
-        //            ServerOptions = options,
-        //            Log = trace
-        //        };
-        //        var listenerContext = new ListenerContext(serviceContext)
-        //        {
-        //            ServerAddress = ServerAddress.FromUrl("http://localhost:5000")
-        //        };
-        //        var connectionContext = new ConnectionContext(listenerContext);
+            var serviceContext = new ServiceContext
+            {
+                DateHeaderValueManager = new DateHeaderValueManager(),
+                ServerOptions = options,
+                Log = trace
+            };
+            var listenerContext = new ListenerContext(serviceContext)
+            {
+                ServerAddress = ServerAddress.FromUrl("http://localhost:5000")
+            };
+            var connectionContext = new ConnectionContext(listenerContext);
 
-        //        var frame = new Frame<object>(application: null, context: connectionContext);
-        //        frame.Reset();
-        //        frame.InitializeHeaders();
+            var frame = new Frame<object>(application: null, context: connectionContext);
+            frame.Reset();
+            frame.InitializeHeaders();
 
-        //        var headerArray = Encoding.ASCII.GetBytes($"{headerLines}\r\n");
-        //        socketInput.IncomingData(headerArray, 0, headerArray.Length);
+            var headerArray = Encoding.ASCII.GetBytes($"{headerLines}\r\n");
+            await _channel.WriteAsync(headerArray);
 
-        //        var exception = Assert.Throws<BadHttpRequestException>(() => frame.TakeMessageHeaders(socketInput, (FrameRequestHeaders)frame.RequestHeaders));
-        //        Assert.Equal("Request contains too many headers.", exception.Message);
-        //        Assert.Equal(431, exception.StatusCode);
-        //    }
-        //}
+            var buffer = await _channel.ReadBufferAsync();
+            ReadCursor consumed;
+
+            var exception =
+                Assert.Throws<BadHttpRequestException>(
+                    () => frame.TakeMessageHeaders(ref buffer, out consumed, (FrameRequestHeaders) frame.RequestHeaders));
+            Assert.Equal("Request contains too many headers.", exception.Message);
+            Assert.Equal(431, exception.StatusCode);
+        }
 
         [Theory]
         [InlineData("Cookie: \r\n\r\n", 1)]

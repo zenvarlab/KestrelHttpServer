@@ -250,8 +250,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var transferEncoding = headers.HeaderTransferEncoding.ToString();
             if (transferEncoding.Length > 0)
             {
-                throw new InvalidOperationException();
-                //return new ForChunkedEncoding(keepAlive, headers, context);
+                return new ForChunkedEncoding(keepAlive, headers, context);
             }
 
             var unparsedContentLength = headers.HeaderContentLength.ToString();
@@ -359,381 +358,385 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        ///// <summary>
-        /////   http://tools.ietf.org/html/rfc2616#section-3.6.1
-        ///// </summary>
-        //private class ForChunkedEncoding : MessageBody
-        //{
-        //    // This causes an InvalidProgramException if made static
-        //    // https://github.com/dotnet/corefx/issues/8825
-        //    private byte _vectorCRs = (byte)'\r';
+        /// <summary>
+        ///   http://tools.ietf.org/html/rfc2616#section-3.6.1
+        /// </summary>
+        private class ForChunkedEncoding : MessageBody
+        {
+            // This causes an InvalidProgramException if made static
+            // https://github.com/dotnet/corefx/issues/8825
+            private byte _vectorCRs = (byte)'\r';
 
-        //    private readonly Channel _input;
-        //    private readonly FrameRequestHeaders _requestHeaders;
-        //    private int _inputLength;
+            private readonly Channel _input;
+            private readonly FrameRequestHeaders _requestHeaders;
+            private int _inputLength;
 
-        //    private Mode _mode = Mode.Prefix;
+            private Mode _mode = Mode.Prefix;
 
-        //    public ForChunkedEncoding(bool keepAlive, FrameRequestHeaders headers, Frame context)
-        //        : base(context)
-        //    {
-        //        RequestKeepAlive = keepAlive;
-        //        _input = _context.Input;
-        //        _requestHeaders = headers;
-        //    }
+            public ForChunkedEncoding(bool keepAlive, FrameRequestHeaders headers, Frame context)
+                : base(context)
+            {
+                RequestKeepAlive = keepAlive;
+                _input = _context.Input;
+                _requestHeaders = headers;
+            }
 
-        //    protected override ValueTask<ArraySegment<byte>> PeekAsync(CancellationToken cancellationToken)
-        //    {
-        //        return new ValueTask<ArraySegment<byte>>(PeekStateMachineAsync());
-        //    }
+            protected override ValueTask<ArraySegment<byte>> PeekAsync(CancellationToken cancellationToken)
+            {
+                return new ValueTask<ArraySegment<byte>>(PeekStateMachineAsync());
+            }
 
-        //    protected override void OnConsumedBytes(int count)
-        //    {
-        //        _inputLength -= count;
-        //    }
+            protected override void OnConsumedBytes(int count)
+            {
+                _inputLength -= count;
+            }
 
-        //    private async Task<ArraySegment<byte>> PeekStateMachineAsync()
-        //    {
-        //        while (_mode < Mode.Trailer)
-        //        {
-        //            while (_mode == Mode.Prefix)
-        //            {
-        //                var fin = _input.CheckFinOrThrow();
+            private async Task<ArraySegment<byte>> PeekStateMachineAsync()
+            {
+                while (_mode < Mode.Trailer)
+                {
+                    while (_mode == Mode.Prefix)
+                    {
+                        var result = await _input.ReadAsync();
+                        var buffer = result.Buffer;
 
-        //                ParseChunkedPrefix();
+                        ReadCursor consumed;
+                        ParseChunkedPrefix(buffer, out consumed);
 
-        //                if (_mode != Mode.Prefix)
-        //                {
-        //                    break;
-        //                }
-        //                else if (fin)
-        //                {
-        //                    _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
-        //                }
+                        _input.AdvanceReader(consumed, consumed);
+                        if (_mode != Mode.Prefix)
+                        {
+                            break;
+                        }
+                        else if (result.IsCompleted)
+                        {
+                            _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
+                        }
 
-        //                await _input;
-        //            }
+                    }
 
-        //            while (_mode == Mode.Extension)
-        //            {
-        //                var fin = _input.CheckFinOrThrow();
+                    while (_mode == Mode.Extension)
+                    {
+                        var result = await _input.ReadAsync();
+                        var buffer = result.Buffer;
 
-        //                ParseExtension();
+                        ReadCursor consumed;
+                        ParseExtension(buffer, out consumed);
 
-        //                if (_mode != Mode.Extension)
-        //                {
-        //                    break;
-        //                }
-        //                else if (fin)
-        //                {
-        //                    _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
-        //                }
+                        _input.AdvanceReader(consumed, consumed);
+                        if (_mode != Mode.Extension)
+                        {
+                            break;
+                        }
+                        else if (result.IsCompleted)
+                        {
+                            _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
+                        }
 
-        //                await _input;
-        //            }
+                    }
 
-        //            while (_mode == Mode.Data)
-        //            {
-        //                var fin = _input.CheckFinOrThrow();
+                    while (_mode == Mode.Data)
+                    {
+                        var result = await _input.ReadAsync();
+                        var buffer = result.Buffer;
 
-        //                var segment = PeekChunkedData();
+                        ReadCursor consumed;
 
-        //                if (segment.Count != 0)
-        //                {
-        //                    return segment;
-        //                }
-        //                else if (_mode != Mode.Data)
-        //                {
-        //                    break;
-        //                }
-        //                else if (fin)
-        //                {
-        //                    _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
-        //                }
+                        var segment = PeekChunkedData(buffer, out consumed);
 
-        //                await _input;
-        //            }
+                        _input.AdvanceReader(consumed, consumed);
 
-        //            while (_mode == Mode.Suffix)
-        //            {
-        //                var fin = _input.CheckFinOrThrow();
+                        if (segment.Count != 0)
+                        {
+                            return segment;
+                        }
+                        else if (_mode != Mode.Data)
+                        {
+                            break;
+                        }
+                        else if (result.IsCompleted)
+                        {
+                            _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
+                        }
 
-        //                ParseChunkedSuffix();
+                    }
 
-        //                if (_mode != Mode.Suffix)
-        //                {
-        //                    break;
-        //                }
-        //                else if (fin)
-        //                {
-        //                    _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
-        //                }
+                    while (_mode == Mode.Suffix)
+                    {
+                        var result = await _input.ReadAsync();
+                        var buffer = result.Buffer;
 
-        //                await _input;
-        //            }
-        //        }
+                        ReadCursor consumed;
 
-        //        // Chunks finished, parse trailers
-        //        while (_mode == Mode.Trailer)
-        //        {
-        //            var fin = _input.CheckFinOrThrow();
+                        ParseChunkedSuffix(buffer, out consumed);
 
-        //            ParseChunkedTrailer();
+                        _input.AdvanceReader(consumed, buffer.End);
 
-        //            if (_mode != Mode.Trailer)
-        //            {
-        //                break;
-        //            }
-        //            else if (fin)
-        //            {
-        //                _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
-        //            }
+                        if (_mode != Mode.Suffix)
+                        {
+                            break;
+                        }
+                        else if (result.IsCompleted)
+                        {
+                            _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
+                        }
 
-        //            await _input;
-        //        }
+                    }
+                }
 
-        //        if (_mode == Mode.TrailerHeaders)
-        //        {
-        //            //while (!_context.TakeMessageHeaders(_input, _requestHeaders))
-        //            //{
-        //            //    if (_input.CheckFinOrThrow())
-        //            //    {
-        //            //        if (_context.TakeMessageHeaders(_input, _requestHeaders))
-        //            //        {
-        //            //            break;
-        //            //        }
-        //            //        else
-        //            //        {
-        //            //            _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
-        //            //        }
-        //            //    }
+                // Chunks finished, parse trailers
+                while (_mode == Mode.Trailer)
+                {
+                    var result = await _input.ReadAsync();
+                    var buffer = result.Buffer;
 
-        //            //    await _input;
-        //            //}
+                    ReadCursor consumed;
 
-        //            _mode = Mode.Complete;
-        //        }
+                    ParseChunkedTrailer(buffer, out consumed);
 
-        //        return default(ArraySegment<byte>);
-        //    }
+                    _input.AdvanceReader(consumed, buffer.End);
 
-        //    private void ParseChunkedPrefix()
-        //    {
-        //        var scan = _input.ConsumingStart();
-        //        var consumed = scan;
-        //        try
-        //        {
-        //            var ch1 = scan.Take();
-        //            var ch2 = scan.Take();
-        //            if (ch1 == -1 || ch2 == -1)
-        //            {
-        //                return;
-        //            }
+                    if (_mode != Mode.Trailer)
+                    {
+                        break;
+                    }
+                    else if (result.IsCompleted)
+                    {
+                        _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
+                    }
 
-        //            var chunkSize = CalculateChunkSize(ch1, 0);
-        //            ch1 = ch2;
+                }
 
-        //            do
-        //            {
-        //                if (ch1 == ';')
-        //                {
-        //                    consumed = scan;
+                if (_mode == Mode.TrailerHeaders)
+                {
+                    while (true)
+                    {
+                        var result = await _input.ReadAsync();
+                        var buffer = result.Buffer;
 
-        //                    _inputLength = chunkSize;
-        //                    _mode = Mode.Extension;
-        //                    return;
-        //                }
+                        if (buffer.IsEmpty && result.IsCompleted)
+                        {
+                            _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
+                        }
 
-        //                ch2 = scan.Take();
-        //                if (ch2 == -1)
-        //                {
-        //                    return;
-        //                }
+                        ReadCursor consumed;
+                        if (_context.TakeMessageHeaders(ref buffer, out consumed, _requestHeaders))
+                        {
+                            _input.AdvanceReader(consumed, consumed);
+                            break;
+                        }
+                        else
+                        {
+                            _input.AdvanceReader(buffer.Start, buffer.End);
+                        }
+                    }
+                    _mode = Mode.Complete;
+                }
 
-        //                if (ch1 == '\r' && ch2 == '\n')
-        //                {
-        //                    consumed = scan;
-        //                    _inputLength = chunkSize;
+                return default(ArraySegment<byte>);
+            }
 
-        //                    if (chunkSize > 0)
-        //                    {
-        //                        _mode = Mode.Data;
-        //                    }
-        //                    else
-        //                    {
-        //                        _mode = Mode.Trailer;
-        //                    }
+            private void ParseChunkedPrefix(ReadableBuffer buffer, out ReadCursor consumed)
+            {
+                consumed = buffer.Start;
+                var ch1 = buffer.Peek();
+                buffer = buffer.Slice(1);
 
-        //                    return;
-        //                }
+                var ch2 = buffer.Peek();
+                buffer = buffer.Slice(1);
 
-        //                chunkSize = CalculateChunkSize(ch1, chunkSize);
-        //                ch1 = ch2;
-        //            } while (ch1 != -1);
-        //        }
-        //        finally
-        //        {
-        //            _input.ConsumingComplete(consumed, scan);
-        //        }
-        //    }
+                if (ch1 == -1 || ch2 == -1)
+                {
+                    return;
+                }
 
-        //    private void ParseExtension()
-        //    {
-        //        var scan = _input.ConsumingStart();
-        //        var consumed = scan;
-        //        try
-        //        {
-        //            // Chunk-extensions not currently parsed
-        //            // Just drain the data
-        //            do
-        //            {
-        //                if (scan.Seek(ref _vectorCRs) == -1)
-        //                {
-        //                    // End marker not found yet
-        //                    consumed = scan;
-        //                    return;
-        //                };
+                var chunkSize = CalculateChunkSize(ch1, 0);
+                ch1 = ch2;
 
-        //                var ch1 = scan.Take();
-        //                var ch2 = scan.Take();
+                do
+                {
+                    if (ch1 == ';')
+                    {
+                        consumed = buffer.Start;
 
-        //                if (ch2 == '\n')
-        //                {
-        //                    consumed = scan;
-        //                    if (_inputLength > 0)
-        //                    {
-        //                        _mode = Mode.Data;
-        //                    }
-        //                    else
-        //                    {
-        //                        _mode = Mode.Trailer;
-        //                    }
-        //                }
-        //                else if (ch2 == -1)
-        //                {
-        //                    return;
-        //                }
-        //            } while (_mode == Mode.Extension);
-        //        }
-        //        finally
-        //        {
-        //            _input.ConsumingComplete(consumed, scan);
-        //        }
-        //    }
+                        _inputLength = chunkSize;
+                        _mode = Mode.Extension;
+                        return;
+                    }
 
-        //    private ArraySegment<byte> PeekChunkedData()
-        //    {
-        //        if (_inputLength == 0)
-        //        {
-        //            _mode = Mode.Suffix;
-        //            return default(ArraySegment<byte>);
-        //        }
+                    ch2 = buffer.Peek();
+                    buffer = buffer.Slice(1);
+                    if (ch2 == -1)
+                    {
+                        return;
+                    }
 
-        //        var scan = _input.ConsumingStart();
-        //        var segment = scan.PeekArraySegment();
-        //        int actual = Math.Min(segment.Count, _inputLength);
-        //        // Nothing is consumed yet. ConsumedBytes(int) will move the iterator.
-        //        _input.ConsumingComplete(scan, scan);
+                    if (ch1 == '\r' && ch2 == '\n')
+                    {
+                        consumed = buffer.Start;
+                        _inputLength = chunkSize;
 
-        //        if (actual == segment.Count)
-        //        {
-        //            return segment;
-        //        }
-        //        else
-        //        {
-        //            return new ArraySegment<byte>(segment.Array, segment.Offset, actual);
-        //        }
-        //    }
+                        if (chunkSize > 0)
+                        {
+                            _mode = Mode.Data;
+                        }
+                        else
+                        {
+                            _mode = Mode.Trailer;
+                        }
 
-        //    private void ParseChunkedSuffix()
-        //    {
-        //        var scan = _input.ConsumingStart();
-        //        var consumed = scan;
-        //        try
-        //        {
-        //            var ch1 = scan.Take();
-        //            var ch2 = scan.Take();
-        //            if (ch1 == -1 || ch2 == -1)
-        //            {
-        //                return;
-        //            }
-        //            else if (ch1 == '\r' && ch2 == '\n')
-        //            {
-        //                consumed = scan;
-        //                _mode = Mode.Prefix;
-        //            }
-        //            else
-        //            {
-        //                _context.RejectRequest(RequestRejectionReason.BadChunkSuffix);
-        //            }
-        //        }
-        //        finally
-        //        {
-        //            _input.ConsumingComplete(consumed, scan);
-        //        }
-        //    }
+                        return;
+                    }
 
-        //    private void ParseChunkedTrailer()
-        //    {
-        //        var scan = _input.ConsumingStart();
-        //        var consumed = scan;
-        //        try
-        //        {
-        //            var ch1 = scan.Take();
-        //            var ch2 = scan.Take();
+                    chunkSize = CalculateChunkSize(ch1, chunkSize);
+                    ch1 = ch2;
+                } while (ch1 != -1);
+            }
 
-        //            if (ch1 == -1 || ch2 == -1)
-        //            {
-        //                return;
-        //            }
-        //            else if (ch1 == '\r' && ch2 == '\n')
-        //            {
-        //                consumed = scan;
-        //                _mode = Mode.Complete;
-        //            }
-        //            else
-        //            {
-        //                _mode = Mode.TrailerHeaders;
-        //            }
-        //        }
-        //        finally
-        //        {
-        //            _input.ConsumingComplete(consumed, scan);
-        //        }
-        //    }
+            private void ParseExtension(ReadableBuffer buffer, out ReadCursor consumed)
+            {
+                // Chunk-extensions not currently parsed
+                // Just drain the data
+                consumed = buffer.Start;
+                do
+                {
+                    ReadCursor extensionCursor;
+                    ReadableBuffer extensionBuffer;
+                    if (buffer.TrySliceTo(_vectorCRs, out extensionBuffer, out extensionCursor))
+                    {
+                        // End marker not found yet
+                        consumed = buffer.Slice(extensionCursor).Slice(1).Start;
+                        return;
+                    };
 
-        //    private int CalculateChunkSize(int extraHexDigit, int currentParsedSize)
-        //    {
-        //        checked
-        //        {
-        //            if (extraHexDigit >= '0' && extraHexDigit <= '9')
-        //            {
-        //                return currentParsedSize * 0x10 + (extraHexDigit - '0');
-        //            }
-        //            else if (extraHexDigit >= 'A' && extraHexDigit <= 'F')
-        //            {
-        //                return currentParsedSize * 0x10 + (extraHexDigit - ('A' - 10));
-        //            }
-        //            else if (extraHexDigit >= 'a' && extraHexDigit <= 'f')
-        //            {
-        //                return currentParsedSize * 0x10 + (extraHexDigit - ('a' - 10));
-        //            }
-        //        }
+                    buffer = buffer.Slice(1);
+                    var ch2 = buffer.Peek();
+                    buffer = buffer.Slice(1);
 
-        //        _context.RejectRequest(RequestRejectionReason.BadChunkSizeData);
-        //        return -1; // can't happen, but compiler complains
-        //    }
+                    if (ch2 == '\n')
+                    {
+                        consumed = buffer.Start;
+                        if (_inputLength > 0)
+                        {
+                            _mode = Mode.Data;
+                        }
+                        else
+                        {
+                            _mode = Mode.Trailer;
+                        }
+                    }
+                    else if (ch2 == -1)
+                    {
+                        return;
+                    }
+                } while (_mode == Mode.Extension);
+            }
 
-        //    private enum Mode
-        //    {
-        //        Prefix,
-        //        Extension,
-        //        Data,
-        //        Suffix,
-        //        Trailer,
-        //        TrailerHeaders,
-        //        Complete
-        //    };
-        //}
+            private ArraySegment<byte> PeekChunkedData(ReadableBuffer buffer, out ReadCursor consumed)
+            {
+                consumed = buffer.Start;
+
+                if (_inputLength == 0)
+                {
+                    _mode = Mode.Suffix;
+                    return default(ArraySegment<byte>);
+                }
+                ArraySegment<byte> segment;
+                buffer.First.TryGetArray(out segment);
+
+                int actual = Math.Min(segment.Count, _inputLength);
+                // Nothing is consumed yet. ConsumedBytes(int) will move the iterator.
+
+                if (actual == segment.Count)
+                {
+                    return segment;
+                }
+                else
+                {
+                    return new ArraySegment<byte>(segment.Array, segment.Offset, actual);
+                }
+            }
+
+            private void ParseChunkedSuffix(ReadableBuffer buffer, out ReadCursor consumed)
+            {
+                consumed = buffer.Start;
+
+                var ch1 = buffer.Peek();
+                buffer = buffer.Slice(1);
+                var ch2 = buffer.Peek();
+                buffer = buffer.Slice(1);
+
+                if (ch1 == -1 || ch2 == -1)
+                {
+                    return;
+                }
+                else if (ch1 == '\r' && ch2 == '\n')
+                {
+                    consumed = buffer.Start;
+                    _mode = Mode.Prefix;
+                }
+                else
+                {
+                    _context.RejectRequest(RequestRejectionReason.BadChunkSuffix);
+                }
+            }
+
+            private void ParseChunkedTrailer(ReadableBuffer buffer, out ReadCursor consumed)
+            {
+                consumed = buffer.Start;
+
+                var ch1 = buffer.Peek();
+                buffer = buffer.Slice(1);
+                var ch2 = buffer.Peek();
+                buffer = buffer.Slice(1);
+
+                if (ch1 == -1 || ch2 == -1)
+                {
+                    return;
+                }
+                else if (ch1 == '\r' && ch2 == '\n')
+                {
+                    consumed = buffer.Start;
+                    _mode = Mode.Complete;
+                }
+                else
+                {
+                    _mode = Mode.TrailerHeaders;
+                }
+            }
+
+            private int CalculateChunkSize(int extraHexDigit, int currentParsedSize)
+            {
+                checked
+                {
+                    if (extraHexDigit >= '0' && extraHexDigit <= '9')
+                    {
+                        return currentParsedSize * 0x10 + (extraHexDigit - '0');
+                    }
+                    else if (extraHexDigit >= 'A' && extraHexDigit <= 'F')
+                    {
+                        return currentParsedSize * 0x10 + (extraHexDigit - ('A' - 10));
+                    }
+                    else if (extraHexDigit >= 'a' && extraHexDigit <= 'f')
+                    {
+                        return currentParsedSize * 0x10 + (extraHexDigit - ('a' - 10));
+                    }
+                }
+
+                _context.RejectRequest(RequestRejectionReason.BadChunkSizeData);
+                return -1; // can't happen, but compiler complains
+            }
+
+            private enum Mode
+            {
+                Prefix,
+                Extension,
+                Data,
+                Suffix,
+                Trailer,
+                TrailerHeaders,
+                Complete
+            };
+        }
     }
 }

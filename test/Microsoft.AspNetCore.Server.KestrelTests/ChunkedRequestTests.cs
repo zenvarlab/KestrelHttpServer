@@ -23,9 +23,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                     {
                         new TestServiceContext()
                     },
-                    {
-                        new TestServiceContext(new PassThroughConnectionFilter())
-                    }
+                    //{
+                    //    new TestServiceContext(new PassThroughConnectionFilter())
+                    //}
                 };
             }
         }
@@ -73,6 +73,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                         "5", "Hello",
                         "6", " World",
                         "0",
+                         "",
                          "");
                     await connection.ReceiveEnd(
                         "HTTP/1.1 200 OK",
@@ -226,6 +227,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                     "C",
                     "HelloChunked",
                     "0",
+                    "",
                     ""};
 
                 for (var i = 1; i < requestCount; i++)
@@ -238,7 +240,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                         $"HelloChunk{i:00}",
                         "0",
                         string.Concat("X-Trailer-Header: ", new string('a', i)),
-                        "" });
+                        "",
+                    "" });
                 }
 
                 sendSequence = sendSequence.Concat(new string[] {

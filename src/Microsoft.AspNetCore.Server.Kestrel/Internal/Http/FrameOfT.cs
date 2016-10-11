@@ -83,12 +83,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     //}
 
 
-                    while (true)
+                    while (!_requestProcessingStopping)
                     {
                         var result = await Input.ReadAsync();
                         var buffer = result.Buffer;
 
-                        if (buffer.IsEmpty && Input.Reading.IsCompleted)
+                        if (buffer.IsEmpty && result.IsCompleted)
                         {
                             return;
                         }
@@ -99,14 +99,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                             Input.AdvanceReader(consumed, consumed);
                             break;
                         }
+                        else
+                        {
+                            Input.AdvanceReader(buffer.Start, buffer.End);
+                        }
                     }
 
-                    while (true)
+                    while (!_requestProcessingStopping)
                     {
                         var result = await Input.ReadAsync();
                         var buffer = result.Buffer;
 
-                        if (buffer.IsEmpty && Input.Reading.IsCompleted)
+                        if (buffer.IsEmpty && result.IsCompleted)
                         {
                             return;
                         }

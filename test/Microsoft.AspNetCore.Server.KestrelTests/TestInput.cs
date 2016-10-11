@@ -17,6 +17,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 {
     class TestInput : IConnectionControl, IFrameControl, IDisposable
     {
+        private ChannelFactory _channelFactory;
+
         public TestInput()
         {
             var trace = new KestrelTrace(new TestKestrelTrace());
@@ -38,7 +40,8 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             FrameContext = context;
             FrameContext.FrameControl = this;
 
-            FrameContext.Input = new ChannelFactory().CreateChannel();
+            _channelFactory = new ChannelFactory();
+            FrameContext.Input = _channelFactory.CreateChannel();
         }
 
         public Frame FrameContext { get; set; }
@@ -113,6 +116,9 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         public void Dispose()
         {
+            _channelFactory.Dispose();
+            FrameContext.Input.CompleteReader();
+            FrameContext.Input.CompleteWriter();
         }
     }
 }

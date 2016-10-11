@@ -67,7 +67,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 var segment = result.Buffer.First;
                 var x = result.Buffer.Slice(0, segment.Length);
-                channel.Advance(x.End);
+                channel.Advance(x.Start);
 
                 ArraySegment<byte> data;
                 Debug.Assert(segment.TryGetArray(out data));
@@ -86,7 +86,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                 var segment = result.Buffer.First;
                 var x = result.Buffer.Slice(0, segment.Length);
-                channel.Advance(x.End);
+                channel.Advance(x.Start);
 
 
                 if (segment.Length != 0 || result.IsCompleted)

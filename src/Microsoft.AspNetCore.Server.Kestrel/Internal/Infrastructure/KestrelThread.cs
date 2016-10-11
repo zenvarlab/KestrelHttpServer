@@ -73,6 +73,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             Memory = new MemoryPool();
             WriteReqPool = new WriteReqPool(this, _log);
             ConnectionManager = new ConnectionManager(this, _threadPool);
+            ChannelFactory = new ChannelFactory();
         }
 
         // For testing
@@ -94,7 +95,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
 
         public Action<Action<IntPtr>, IntPtr> QueueCloseHandle { get; }
 
-        public ChannelFactory ChannelFactory { get; } = new ChannelFactory();
+        public ChannelFactory ChannelFactory { get; }
 
         private Action<Action<IntPtr>, IntPtr> QueueCloseAsyncHandle { get; }
 
@@ -181,6 +182,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal
             finally
             {
                 Memory.Dispose();
+                ChannelFactory.Dispose();
             }
         }
 

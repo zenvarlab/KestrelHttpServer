@@ -211,19 +211,22 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [Fact]
         public async Task CompleteAwaitingDoesNotCauseZeroLengthPeek()
         {
-            var socketInput = new ChannelFactory().CreateChannel();
-            await socketInput.WriteAsync(new byte[5]);
-            Assert.Equal(5, (await socketInput.PeekAsync()).Count);
+            using (var channelFactory = new ChannelFactory())
+            {
+                var socketInput = channelFactory.CreateChannel();
+                await socketInput.WriteAsync(new byte[5]);
+                Assert.Equal(5, (await socketInput.PeekAsync()).Count);
 
-            var scan = await socketInput.ReadAsync();
-            socketInput.AdvanceReader(scan.Buffer.End, scan.Buffer.End);
+                var scan = await socketInput.ReadAsync();
+                socketInput.AdvanceReader(scan.Buffer.End, scan.Buffer.End);
 
-            var peekTask = socketInput.PeekAsync();
-            await socketInput.WriteAsync(new byte[0]);
-            Assert.False(peekTask.IsCompleted);
+                var peekTask = socketInput.PeekAsync();
+                await socketInput.WriteAsync(new byte[0]);
+                Assert.False(peekTask.IsCompleted);
 
-            await socketInput.WriteAsync(new byte[5]);
-            Assert.Equal(5, (await socketInput.PeekAsync()).Count);
+                await socketInput.WriteAsync(new byte[5]);
+                Assert.Equal(5, (await socketInput.PeekAsync()).Count);
+            }
         }
 
         private static void TestConcurrentFaultedTask(Task t)
