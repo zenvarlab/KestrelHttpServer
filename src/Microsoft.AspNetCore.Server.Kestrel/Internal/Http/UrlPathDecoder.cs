@@ -1,57 +1,57 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using Channels;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
     public class UrlPathDecoder
     {
-        /// <summary>
-        /// Unescapes the string between given memory iterators in place.
-        /// </summary>
-        /// <param name="start">The iterator points to the beginning of the sequence.</param>
-        /// <param name="end">The iterator points to the byte behind the end of the sequence.</param>
-        /// <returns>The iterator points to the byte behind the end of the processed sequence.</returns>
-        public static MemoryPoolIterator Unescape(MemoryPoolIterator start, MemoryPoolIterator end)
-        {
-            // the slot to read the input
-            var reader = start;
+        ///// <summary>
+        ///// Unescapes the string between given memory iterators in place.
+        ///// </summary>
+        ///// <param name="buffer">The iterator points to the beginning of the sequence.</param>
+        ///// <returns>The iterator points to the byte behind the end of the processed sequence.</returns>
+        //public static MemoryPoolIterator Unescape(ReadableBuffer buffer)
+        //{
+        //    // the slot to read the input
+        //    var reader = start;
 
-            // the slot to write the unescaped byte
-            var writer = reader;
+        //    // the slot to write the unescaped byte
+        //    var writer = reader;
 
-            while (true)
-            {
-                if (CompareIterators(ref reader, ref end))
-                {
-                    return writer;
-                }
+        //    while (true)
+        //    {
+        //        if (CompareIterators(ref reader, ref end))
+        //        {
+        //            return writer;
+        //        }
 
-                if (reader.Peek() == '%')
-                {
-                    var decodeReader = reader;
+        //        if (reader.Peek() == '%')
+        //        {
+        //            var decodeReader = reader;
 
-                    // If decoding process succeeds, the writer iterator will be moved
-                    // to the next write-ready location. On the other hand if the scanned
-                    // percent-encodings cannot be interpreted as sequence of UTF-8 octets,
-                    // these bytes should be copied to output as is. 
-                    // The decodeReader iterator is always moved to the first byte not yet 
-                    // be scanned after the process. A failed decoding means the chars
-                    // between the reader and decodeReader can be copied to output untouched. 
-                    if (!DecodeCore(ref decodeReader, ref writer, end))
-                    {
-                        Copy(reader, decodeReader, ref writer);
-                    }
+        //            // If decoding process succeeds, the writer iterator will be moved
+        //            // to the next write-ready location. On the other hand if the scanned
+        //            // percent-encodings cannot be interpreted as sequence of UTF-8 octets,
+        //            // these bytes should be copied to output as is. 
+        //            // The decodeReader iterator is always moved to the first byte not yet 
+        //            // be scanned after the process. A failed decoding means the chars
+        //            // between the reader and decodeReader can be copied to output untouched. 
+        //            if (!DecodeCore(ref decodeReader, ref writer, end))
+        //            {
+        //                Copy(reader, decodeReader, ref writer);
+        //            }
 
-                    reader = decodeReader;
-                }
-                else
-                {
-                    writer.Put((byte)reader.Take());
-                }
-            }
-        }
+        //            reader = decodeReader;
+        //        }
+        //        else
+        //        {
+        //            writer.Put((byte)reader.Take());
+        //        }
+        //    }
+        //}
 
         /// <summary>
         /// Unescape the percent-encodings

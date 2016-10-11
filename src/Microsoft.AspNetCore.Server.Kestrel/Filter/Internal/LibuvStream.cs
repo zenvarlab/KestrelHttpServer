@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Channels;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.Extensions.Internal;
 
@@ -12,12 +13,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
 {
     public class LibuvStream : Stream
     {
-        private readonly SocketInput _input;
+        private readonly IReadableChannel _input;
         private readonly ISocketOutput _output;
 
         private Task<int> _cachedTask = TaskCache<int>.DefaultCompletedTask;
 
-        public LibuvStream(SocketInput input, ISocketOutput output)
+        public LibuvStream(IReadableChannel input, ISocketOutput output)
         {
             _input = input;
             _output = output;
@@ -128,7 +129,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
 
         private ValueTask<int> ReadAsync(ArraySegment<byte> buffer)
         {
-            return _input.ReadAsync(buffer.Array, buffer.Offset, buffer.Count);
+            return _input.ReadAsync(buffer);
         }
 
 #if NET451

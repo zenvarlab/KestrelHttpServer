@@ -37,9 +37,9 @@ namespace SampleApp
                 .UseKestrel(options =>
                 {
                     // options.ThreadCount = 4;
-                    options.NoDelay = true;
-                    options.UseHttps("testCert.pfx", "testPassword");
-                    options.UseConnectionLogging();
+                    //options.NoDelay = true;
+                    //options.UseHttps("testCert.pfx", "testPassword");
+                    //options.UseConnectionLogging();
                 })
                 .UseUrls("http://localhost:5000", "https://localhost:5001")
                 .UseContentRoot(Directory.GetCurrentDirectory())

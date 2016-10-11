@@ -4,6 +4,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Channels;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
@@ -19,7 +20,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         /// <summary>
         /// Returns an iterator pointing to the tail of the response buffer. Response data can be appended
         /// manually or by using <see cref="MemoryPoolIterator.CopyFrom(ArraySegment{byte})"/>.
-        /// Be careful to ensure all appended blocks are backed by a <see cref="MemoryPoolSlab"/>. 
+        /// Be careful to ensure all appended blocks are backed by a <see cref="Infrastructure.MemoryPoolSlab"/>. 
         /// </summary>
         MemoryPoolIterator ProducingStart();
 

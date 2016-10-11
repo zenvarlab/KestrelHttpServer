@@ -4,6 +4,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Channels;
 using Microsoft.AspNetCore.Server.Kestrel;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
@@ -16,8 +17,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 {
     class TestInput : IConnectionControl, IFrameControl, IDisposable
     {
-        private MemoryPool _memoryPool;
-
         public TestInput()
         {
             var trace = new KestrelTrace(new TestKestrelTrace());
@@ -39,8 +38,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             FrameContext = context;
             FrameContext.FrameControl = this;
 
-            _memoryPool = new MemoryPool();
-            FrameContext.SocketInput = new SocketInput(_memoryPool, ltp);
+            FrameContext.Input = new ChannelFactory().CreateChannel();
         }
 
         public Frame FrameContext { get; set; }
@@ -48,10 +46,10 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         public void Add(string text, bool fin = false)
         {
             var data = System.Text.Encoding.ASCII.GetBytes(text);
-            FrameContext.SocketInput.IncomingData(data, 0, data.Length);
+            FrameContext.Input.WriteAsync(data).GetAwaiter().GetResult();
             if (fin)
             {
-                FrameContext.SocketInput.IncomingFin();
+                FrameContext.Input.CompleteWriter();;
             }
         }
 
@@ -115,8 +113,6 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         public void Dispose()
         {
-            FrameContext.SocketInput.Dispose();
-            _memoryPool.Dispose();
         }
     }
 }

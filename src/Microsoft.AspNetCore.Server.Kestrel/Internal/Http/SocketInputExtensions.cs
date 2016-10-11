@@ -2,7 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
+using Channels;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
@@ -49,40 +51,49 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        public static ValueTask<ArraySegment<byte>> PeekAsync(this SocketInput input)
+        public static bool Contains(ref ReadableBuffer buffer, byte b)
         {
-            while (input.IsCompleted)
-            {
-                var fin = input.CheckFinOrThrow();
-
-                var begin = input.ConsumingStart();
-                var segment = begin.PeekArraySegment();
-                input.ConsumingComplete(begin, begin);
-
-                if (segment.Count != 0 || fin)
-                {
-                    return new ValueTask<ArraySegment<byte>>(segment);
-                }
-            }
-
-            return new ValueTask<ArraySegment<byte>>(input.PeekAsyncAwaited());
+            ReadCursor cursor;
+            ReadableBuffer newBuffer;
+            return buffer.TrySliceTo(b, out newBuffer, out cursor);
         }
 
-        private static async Task<ArraySegment<byte>> PeekAsyncAwaited(this SocketInput input)
+        public static ValueTask<ArraySegment<byte>> PeekAsync(this IReadableChannel channel)
+        {
+            var input = channel.ReadAsync();
+            while (input.IsCompleted)
+            {
+                var result = input.GetResult();
+
+                var segment = result.Buffer.First;
+                var x = result.Buffer.Slice(0, segment.Length);
+                channel.Advance(x.End);
+
+                ArraySegment<byte> data;
+                Debug.Assert(segment.TryGetArray(out data));
+
+                return new ValueTask<ArraySegment<byte>>(data);
+            }
+
+            return new ValueTask<ArraySegment<byte>>(channel.PeekAsyncAwaited());
+        }
+
+        private static async Task<ArraySegment<byte>> PeekAsyncAwaited(this IReadableChannel channel)
         {
             while (true)
             {
-                await input;
+                var result = await channel.ReadAsync();
 
-                var fin = input.CheckFinOrThrow();
+                var segment = result.Buffer.First;
+                var x = result.Buffer.Slice(0, segment.Length);
+                channel.Advance(x.End);
 
-                var begin = input.ConsumingStart();
-                var segment = begin.PeekArraySegment();
-                input.ConsumingComplete(begin, begin);
 
-                if (segment.Count != 0 || fin)
+                if (segment.Length != 0 || result.IsCompleted)
                 {
-                    return segment;
+                    ArraySegment<byte> data;
+                    Debug.Assert(segment.TryGetArray(out data));
+                    return data;
                 }
             }
         }

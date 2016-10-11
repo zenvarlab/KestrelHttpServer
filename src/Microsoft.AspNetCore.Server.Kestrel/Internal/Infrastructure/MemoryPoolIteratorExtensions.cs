@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Text;
+using Channels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 
@@ -127,19 +128,31 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             return asciiString;
         }
 
-        public static string GetAsciiStringEscaped(this MemoryPoolIterator start, MemoryPoolIterator end, int maxChars)
+        public static string GetAsciiStringEscaped(this ReadableBuffer start, int maxChars)
         {
             var sb = new StringBuilder();
-            var scan = start;
-
-            while (maxChars > 0 && (scan.Block != end.Block || scan.Index != end.Index))
+            bool overflow = false;
+            foreach (var memory in start)
             {
-                var ch = scan.Take();
-                sb.Append(ch < 0x20 || ch >= 0x7F ? $"<0x{ch.ToString("X2")}>" : ((char)ch).ToString());
-                maxChars--;
+                if (overflow)
+                {
+                    break;
+                }
+
+                foreach (var ch in memory.Span)
+                {
+                    if (maxChars == 0)
+                    {
+                        overflow = true;
+                        break;
+                    }
+
+                    sb.Append(ch < 0x20 || ch >= 0x7F ? $"<0x{ch:X2}>" : ((char)ch).ToString());
+                    maxChars--;
+                }
             }
 
-            if (scan.Block != end.Block || scan.Index != end.Index)
+            if (overflow)
             {
                 sb.Append("...");
             }
@@ -283,10 +296,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         /// <param name="begin">The iterator from which to start the known string lookup.</param>
         /// <param name="knownMethod">A reference to a pre-allocated known string, if the input matches any.</param>
         /// <returns><c>true</c> if the input matches a known string, <c>false</c> otherwise.</returns>
-        public static bool GetKnownMethod(this MemoryPoolIterator begin, out string knownMethod)
+        public static bool GetKnownMethod(this ReadableBuffer begin, out string knownMethod)
         {
             knownMethod = null;
-            var value = begin.PeekLong();
+            var value = begin.ReadLittleEndian<long>();
 
             if ((value & _mask4Chars) == _httpGetMethodLong)
             {
@@ -318,10 +331,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
         /// <param name="begin">The iterator from which to start the known string lookup.</param>
         /// <param name="knownVersion">A reference to a pre-allocated known string, if the input matches any.</param>
         /// <returns><c>true</c> if the input matches a known string, <c>false</c> otherwise.</returns>
-        public static bool GetKnownVersion(this MemoryPoolIterator begin, out string knownVersion)
+        public static bool GetKnownVersion(this ReadableBuffer begin, out string knownVersion)
         {
             knownVersion = null;
-            var value = begin.PeekLong();
+            if (begin.Length != 8)
+            {
+                return false;
+            }
+            var value = begin.ReadLittleEndian<long>();
 
             if (value == _http11VersionLong)
             {
@@ -331,17 +348,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure
             {
                 knownVersion = Http10Version;
             }
-
-            if (knownVersion != null)
-            {
-                begin.Skip(knownVersion.Length);
-
-                if (begin.Peek() != '\r')
-                {
-                    knownVersion = null;
-                }
-            }
-
             return knownVersion != null;
         }
     }

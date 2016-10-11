@@ -2,10 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using Channels;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Internal;
 
@@ -206,13 +208,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _context.FrameControl.ProduceContinue();
                 _send100Continue = false;
             }
+            ;
         }
 
         private void ConsumedBytes(int count)
         {
-            var scan = _context.SocketInput.ConsumingStart();
-            scan.Skip(count);
-            _context.SocketInput.ConsumingComplete(scan, scan);
+            var scan = _context.Input.ReadAsync();
+            Debug.Assert(scan.IsCompleted);
+            var result = scan.GetResult();
+            var readCursor = result.Buffer.Start.Seek(count);
+            _context.Input.AdvanceReader(readCursor, readCursor);
 
             OnConsumedBytes(count);
         }
@@ -245,7 +250,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var transferEncoding = headers.HeaderTransferEncoding.ToString();
             if (transferEncoding.Length > 0)
             {
-                return new ForChunkedEncoding(keepAlive, headers, context);
+                throw new InvalidOperationException();
+                //return new ForChunkedEncoding(keepAlive, headers, context);
             }
 
             var unparsedContentLength = headers.HeaderContentLength.ToString();
@@ -274,7 +280,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             protected override ValueTask<ArraySegment<byte>> PeekAsync(CancellationToken cancellationToken)
             {
-                return _context.SocketInput.PeekAsync();
+                return _context.Input.PeekAsync();
             }
         }
 
@@ -299,7 +305,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     return new ValueTask<ArraySegment<byte>>();
                 }
 
-                var task = _context.SocketInput.PeekAsync();
+                var task = _context.Input.PeekAsync();
 
                 if (task.IsCompleted)
                 {
@@ -353,381 +359,381 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
         }
 
-        /// <summary>
-        ///   http://tools.ietf.org/html/rfc2616#section-3.6.1
-        /// </summary>
-        private class ForChunkedEncoding : MessageBody
-        {
-            // This causes an InvalidProgramException if made static
-            // https://github.com/dotnet/corefx/issues/8825
-            private Vector<byte> _vectorCRs = new Vector<byte>((byte)'\r');
+        ///// <summary>
+        /////   http://tools.ietf.org/html/rfc2616#section-3.6.1
+        ///// </summary>
+        //private class ForChunkedEncoding : MessageBody
+        //{
+        //    // This causes an InvalidProgramException if made static
+        //    // https://github.com/dotnet/corefx/issues/8825
+        //    private byte _vectorCRs = (byte)'\r';
 
-            private readonly SocketInput _input;
-            private readonly FrameRequestHeaders _requestHeaders;
-            private int _inputLength;
+        //    private readonly Channel _input;
+        //    private readonly FrameRequestHeaders _requestHeaders;
+        //    private int _inputLength;
 
-            private Mode _mode = Mode.Prefix;
+        //    private Mode _mode = Mode.Prefix;
 
-            public ForChunkedEncoding(bool keepAlive, FrameRequestHeaders headers, Frame context)
-                : base(context)
-            {
-                RequestKeepAlive = keepAlive;
-                _input = _context.SocketInput;
-                _requestHeaders = headers;
-            }
+        //    public ForChunkedEncoding(bool keepAlive, FrameRequestHeaders headers, Frame context)
+        //        : base(context)
+        //    {
+        //        RequestKeepAlive = keepAlive;
+        //        _input = _context.Input;
+        //        _requestHeaders = headers;
+        //    }
 
-            protected override ValueTask<ArraySegment<byte>> PeekAsync(CancellationToken cancellationToken)
-            {
-                return new ValueTask<ArraySegment<byte>>(PeekStateMachineAsync());
-            }
+        //    protected override ValueTask<ArraySegment<byte>> PeekAsync(CancellationToken cancellationToken)
+        //    {
+        //        return new ValueTask<ArraySegment<byte>>(PeekStateMachineAsync());
+        //    }
 
-            protected override void OnConsumedBytes(int count)
-            {
-                _inputLength -= count;
-            }
+        //    protected override void OnConsumedBytes(int count)
+        //    {
+        //        _inputLength -= count;
+        //    }
 
-            private async Task<ArraySegment<byte>> PeekStateMachineAsync()
-            {
-                while (_mode < Mode.Trailer)
-                {
-                    while (_mode == Mode.Prefix)
-                    {
-                        var fin = _input.CheckFinOrThrow();
+        //    private async Task<ArraySegment<byte>> PeekStateMachineAsync()
+        //    {
+        //        while (_mode < Mode.Trailer)
+        //        {
+        //            while (_mode == Mode.Prefix)
+        //            {
+        //                var fin = _input.CheckFinOrThrow();
 
-                        ParseChunkedPrefix();
+        //                ParseChunkedPrefix();
 
-                        if (_mode != Mode.Prefix)
-                        {
-                            break;
-                        }
-                        else if (fin)
-                        {
-                            _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
-                        }
+        //                if (_mode != Mode.Prefix)
+        //                {
+        //                    break;
+        //                }
+        //                else if (fin)
+        //                {
+        //                    _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
+        //                }
 
-                        await _input;
-                    }
+        //                await _input;
+        //            }
 
-                    while (_mode == Mode.Extension)
-                    {
-                        var fin = _input.CheckFinOrThrow();
+        //            while (_mode == Mode.Extension)
+        //            {
+        //                var fin = _input.CheckFinOrThrow();
 
-                        ParseExtension();
+        //                ParseExtension();
 
-                        if (_mode != Mode.Extension)
-                        {
-                            break;
-                        }
-                        else if (fin)
-                        {
-                            _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
-                        }
+        //                if (_mode != Mode.Extension)
+        //                {
+        //                    break;
+        //                }
+        //                else if (fin)
+        //                {
+        //                    _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
+        //                }
 
-                        await _input;
-                    }
+        //                await _input;
+        //            }
 
-                    while (_mode == Mode.Data)
-                    {
-                        var fin = _input.CheckFinOrThrow();
+        //            while (_mode == Mode.Data)
+        //            {
+        //                var fin = _input.CheckFinOrThrow();
 
-                        var segment = PeekChunkedData();
+        //                var segment = PeekChunkedData();
 
-                        if (segment.Count != 0)
-                        {
-                            return segment;
-                        }
-                        else if (_mode != Mode.Data)
-                        {
-                            break;
-                        }
-                        else if (fin)
-                        {
-                            _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
-                        }
+        //                if (segment.Count != 0)
+        //                {
+        //                    return segment;
+        //                }
+        //                else if (_mode != Mode.Data)
+        //                {
+        //                    break;
+        //                }
+        //                else if (fin)
+        //                {
+        //                    _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
+        //                }
 
-                        await _input;
-                    }
+        //                await _input;
+        //            }
 
-                    while (_mode == Mode.Suffix)
-                    {
-                        var fin = _input.CheckFinOrThrow();
+        //            while (_mode == Mode.Suffix)
+        //            {
+        //                var fin = _input.CheckFinOrThrow();
 
-                        ParseChunkedSuffix();
+        //                ParseChunkedSuffix();
 
-                        if (_mode != Mode.Suffix)
-                        {
-                            break;
-                        }
-                        else if (fin)
-                        {
-                            _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
-                        }
+        //                if (_mode != Mode.Suffix)
+        //                {
+        //                    break;
+        //                }
+        //                else if (fin)
+        //                {
+        //                    _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
+        //                }
 
-                        await _input;
-                    }
-                }
+        //                await _input;
+        //            }
+        //        }
 
-                // Chunks finished, parse trailers
-                while (_mode == Mode.Trailer)
-                {
-                    var fin = _input.CheckFinOrThrow();
+        //        // Chunks finished, parse trailers
+        //        while (_mode == Mode.Trailer)
+        //        {
+        //            var fin = _input.CheckFinOrThrow();
 
-                    ParseChunkedTrailer();
+        //            ParseChunkedTrailer();
 
-                    if (_mode != Mode.Trailer)
-                    {
-                        break;
-                    }
-                    else if (fin)
-                    {
-                        _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
-                    }
+        //            if (_mode != Mode.Trailer)
+        //            {
+        //                break;
+        //            }
+        //            else if (fin)
+        //            {
+        //                _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
+        //            }
 
-                    await _input;
-                }
+        //            await _input;
+        //        }
 
-                if (_mode == Mode.TrailerHeaders)
-                {
-                    while (!_context.TakeMessageHeaders(_input, _requestHeaders))
-                    {
-                        if (_input.CheckFinOrThrow())
-                        {
-                            if (_context.TakeMessageHeaders(_input, _requestHeaders))
-                            {
-                                break;
-                            }
-                            else
-                            {
-                                _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
-                            }
-                        }
+        //        if (_mode == Mode.TrailerHeaders)
+        //        {
+        //            //while (!_context.TakeMessageHeaders(_input, _requestHeaders))
+        //            //{
+        //            //    if (_input.CheckFinOrThrow())
+        //            //    {
+        //            //        if (_context.TakeMessageHeaders(_input, _requestHeaders))
+        //            //        {
+        //            //            break;
+        //            //        }
+        //            //        else
+        //            //        {
+        //            //            _context.RejectRequest(RequestRejectionReason.ChunkedRequestIncomplete);
+        //            //        }
+        //            //    }
 
-                        await _input;
-                    }
+        //            //    await _input;
+        //            //}
 
-                    _mode = Mode.Complete;
-                }
+        //            _mode = Mode.Complete;
+        //        }
 
-                return default(ArraySegment<byte>);
-            }
+        //        return default(ArraySegment<byte>);
+        //    }
 
-            private void ParseChunkedPrefix()
-            {
-                var scan = _input.ConsumingStart();
-                var consumed = scan;
-                try
-                {
-                    var ch1 = scan.Take();
-                    var ch2 = scan.Take();
-                    if (ch1 == -1 || ch2 == -1)
-                    {
-                        return;
-                    }
+        //    private void ParseChunkedPrefix()
+        //    {
+        //        var scan = _input.ConsumingStart();
+        //        var consumed = scan;
+        //        try
+        //        {
+        //            var ch1 = scan.Take();
+        //            var ch2 = scan.Take();
+        //            if (ch1 == -1 || ch2 == -1)
+        //            {
+        //                return;
+        //            }
 
-                    var chunkSize = CalculateChunkSize(ch1, 0);
-                    ch1 = ch2;
+        //            var chunkSize = CalculateChunkSize(ch1, 0);
+        //            ch1 = ch2;
 
-                    do
-                    {
-                        if (ch1 == ';')
-                        {
-                            consumed = scan;
+        //            do
+        //            {
+        //                if (ch1 == ';')
+        //                {
+        //                    consumed = scan;
 
-                            _inputLength = chunkSize;
-                            _mode = Mode.Extension;
-                            return;
-                        }
+        //                    _inputLength = chunkSize;
+        //                    _mode = Mode.Extension;
+        //                    return;
+        //                }
 
-                        ch2 = scan.Take();
-                        if (ch2 == -1)
-                        {
-                            return;
-                        }
+        //                ch2 = scan.Take();
+        //                if (ch2 == -1)
+        //                {
+        //                    return;
+        //                }
 
-                        if (ch1 == '\r' && ch2 == '\n')
-                        {
-                            consumed = scan;
-                            _inputLength = chunkSize;
+        //                if (ch1 == '\r' && ch2 == '\n')
+        //                {
+        //                    consumed = scan;
+        //                    _inputLength = chunkSize;
 
-                            if (chunkSize > 0)
-                            {
-                                _mode = Mode.Data;
-                            }
-                            else
-                            {
-                                _mode = Mode.Trailer;
-                            }
+        //                    if (chunkSize > 0)
+        //                    {
+        //                        _mode = Mode.Data;
+        //                    }
+        //                    else
+        //                    {
+        //                        _mode = Mode.Trailer;
+        //                    }
 
-                            return;
-                        }
+        //                    return;
+        //                }
 
-                        chunkSize = CalculateChunkSize(ch1, chunkSize);
-                        ch1 = ch2;
-                    } while (ch1 != -1);
-                }
-                finally
-                {
-                    _input.ConsumingComplete(consumed, scan);
-                }
-            }
+        //                chunkSize = CalculateChunkSize(ch1, chunkSize);
+        //                ch1 = ch2;
+        //            } while (ch1 != -1);
+        //        }
+        //        finally
+        //        {
+        //            _input.ConsumingComplete(consumed, scan);
+        //        }
+        //    }
 
-            private void ParseExtension()
-            {
-                var scan = _input.ConsumingStart();
-                var consumed = scan;
-                try
-                {
-                    // Chunk-extensions not currently parsed
-                    // Just drain the data
-                    do
-                    {
-                        if (scan.Seek(ref _vectorCRs) == -1)
-                        {
-                            // End marker not found yet
-                            consumed = scan;
-                            return;
-                        };
+        //    private void ParseExtension()
+        //    {
+        //        var scan = _input.ConsumingStart();
+        //        var consumed = scan;
+        //        try
+        //        {
+        //            // Chunk-extensions not currently parsed
+        //            // Just drain the data
+        //            do
+        //            {
+        //                if (scan.Seek(ref _vectorCRs) == -1)
+        //                {
+        //                    // End marker not found yet
+        //                    consumed = scan;
+        //                    return;
+        //                };
 
-                        var ch1 = scan.Take();
-                        var ch2 = scan.Take();
+        //                var ch1 = scan.Take();
+        //                var ch2 = scan.Take();
 
-                        if (ch2 == '\n')
-                        {
-                            consumed = scan;
-                            if (_inputLength > 0)
-                            {
-                                _mode = Mode.Data;
-                            }
-                            else
-                            {
-                                _mode = Mode.Trailer;
-                            }
-                        }
-                        else if (ch2 == -1)
-                        {
-                            return;
-                        }
-                    } while (_mode == Mode.Extension);
-                }
-                finally
-                {
-                    _input.ConsumingComplete(consumed, scan);
-                }
-            }
+        //                if (ch2 == '\n')
+        //                {
+        //                    consumed = scan;
+        //                    if (_inputLength > 0)
+        //                    {
+        //                        _mode = Mode.Data;
+        //                    }
+        //                    else
+        //                    {
+        //                        _mode = Mode.Trailer;
+        //                    }
+        //                }
+        //                else if (ch2 == -1)
+        //                {
+        //                    return;
+        //                }
+        //            } while (_mode == Mode.Extension);
+        //        }
+        //        finally
+        //        {
+        //            _input.ConsumingComplete(consumed, scan);
+        //        }
+        //    }
 
-            private ArraySegment<byte> PeekChunkedData()
-            {
-                if (_inputLength == 0)
-                {
-                    _mode = Mode.Suffix;
-                    return default(ArraySegment<byte>);
-                }
+        //    private ArraySegment<byte> PeekChunkedData()
+        //    {
+        //        if (_inputLength == 0)
+        //        {
+        //            _mode = Mode.Suffix;
+        //            return default(ArraySegment<byte>);
+        //        }
 
-                var scan = _input.ConsumingStart();
-                var segment = scan.PeekArraySegment();
-                int actual = Math.Min(segment.Count, _inputLength);
-                // Nothing is consumed yet. ConsumedBytes(int) will move the iterator.
-                _input.ConsumingComplete(scan, scan);
+        //        var scan = _input.ConsumingStart();
+        //        var segment = scan.PeekArraySegment();
+        //        int actual = Math.Min(segment.Count, _inputLength);
+        //        // Nothing is consumed yet. ConsumedBytes(int) will move the iterator.
+        //        _input.ConsumingComplete(scan, scan);
 
-                if (actual == segment.Count)
-                {
-                    return segment;
-                }
-                else
-                {
-                    return new ArraySegment<byte>(segment.Array, segment.Offset, actual);
-                }
-            }
+        //        if (actual == segment.Count)
+        //        {
+        //            return segment;
+        //        }
+        //        else
+        //        {
+        //            return new ArraySegment<byte>(segment.Array, segment.Offset, actual);
+        //        }
+        //    }
 
-            private void ParseChunkedSuffix()
-            {
-                var scan = _input.ConsumingStart();
-                var consumed = scan;
-                try
-                {
-                    var ch1 = scan.Take();
-                    var ch2 = scan.Take();
-                    if (ch1 == -1 || ch2 == -1)
-                    {
-                        return;
-                    }
-                    else if (ch1 == '\r' && ch2 == '\n')
-                    {
-                        consumed = scan;
-                        _mode = Mode.Prefix;
-                    }
-                    else
-                    {
-                        _context.RejectRequest(RequestRejectionReason.BadChunkSuffix);
-                    }
-                }
-                finally
-                {
-                    _input.ConsumingComplete(consumed, scan);
-                }
-            }
+        //    private void ParseChunkedSuffix()
+        //    {
+        //        var scan = _input.ConsumingStart();
+        //        var consumed = scan;
+        //        try
+        //        {
+        //            var ch1 = scan.Take();
+        //            var ch2 = scan.Take();
+        //            if (ch1 == -1 || ch2 == -1)
+        //            {
+        //                return;
+        //            }
+        //            else if (ch1 == '\r' && ch2 == '\n')
+        //            {
+        //                consumed = scan;
+        //                _mode = Mode.Prefix;
+        //            }
+        //            else
+        //            {
+        //                _context.RejectRequest(RequestRejectionReason.BadChunkSuffix);
+        //            }
+        //        }
+        //        finally
+        //        {
+        //            _input.ConsumingComplete(consumed, scan);
+        //        }
+        //    }
 
-            private void ParseChunkedTrailer()
-            {
-                var scan = _input.ConsumingStart();
-                var consumed = scan;
-                try
-                {
-                    var ch1 = scan.Take();
-                    var ch2 = scan.Take();
+        //    private void ParseChunkedTrailer()
+        //    {
+        //        var scan = _input.ConsumingStart();
+        //        var consumed = scan;
+        //        try
+        //        {
+        //            var ch1 = scan.Take();
+        //            var ch2 = scan.Take();
 
-                    if (ch1 == -1 || ch2 == -1)
-                    {
-                        return;
-                    }
-                    else if (ch1 == '\r' && ch2 == '\n')
-                    {
-                        consumed = scan;
-                        _mode = Mode.Complete;
-                    }
-                    else
-                    {
-                        _mode = Mode.TrailerHeaders;
-                    }
-                }
-                finally
-                {
-                    _input.ConsumingComplete(consumed, scan);
-                }
-            }
+        //            if (ch1 == -1 || ch2 == -1)
+        //            {
+        //                return;
+        //            }
+        //            else if (ch1 == '\r' && ch2 == '\n')
+        //            {
+        //                consumed = scan;
+        //                _mode = Mode.Complete;
+        //            }
+        //            else
+        //            {
+        //                _mode = Mode.TrailerHeaders;
+        //            }
+        //        }
+        //        finally
+        //        {
+        //            _input.ConsumingComplete(consumed, scan);
+        //        }
+        //    }
 
-            private int CalculateChunkSize(int extraHexDigit, int currentParsedSize)
-            {
-                checked
-                {
-                    if (extraHexDigit >= '0' && extraHexDigit <= '9')
-                    {
-                        return currentParsedSize * 0x10 + (extraHexDigit - '0');
-                    }
-                    else if (extraHexDigit >= 'A' && extraHexDigit <= 'F')
-                    {
-                        return currentParsedSize * 0x10 + (extraHexDigit - ('A' - 10));
-                    }
-                    else if (extraHexDigit >= 'a' && extraHexDigit <= 'f')
-                    {
-                        return currentParsedSize * 0x10 + (extraHexDigit - ('a' - 10));
-                    }
-                }
+        //    private int CalculateChunkSize(int extraHexDigit, int currentParsedSize)
+        //    {
+        //        checked
+        //        {
+        //            if (extraHexDigit >= '0' && extraHexDigit <= '9')
+        //            {
+        //                return currentParsedSize * 0x10 + (extraHexDigit - '0');
+        //            }
+        //            else if (extraHexDigit >= 'A' && extraHexDigit <= 'F')
+        //            {
+        //                return currentParsedSize * 0x10 + (extraHexDigit - ('A' - 10));
+        //            }
+        //            else if (extraHexDigit >= 'a' && extraHexDigit <= 'f')
+        //            {
+        //                return currentParsedSize * 0x10 + (extraHexDigit - ('a' - 10));
+        //            }
+        //        }
 
-                _context.RejectRequest(RequestRejectionReason.BadChunkSizeData);
-                return -1; // can't happen, but compiler complains
-            }
+        //        _context.RejectRequest(RequestRejectionReason.BadChunkSizeData);
+        //        return -1; // can't happen, but compiler complains
+        //    }
 
-            private enum Mode
-            {
-                Prefix,
-                Extension,
-                Data,
-                Suffix,
-                Trailer,
-                TrailerHeaders,
-                Complete
-            };
-        }
+        //    private enum Mode
+        //    {
+        //        Prefix,
+        //        Extension,
+        //        Data,
+        //        Suffix,
+        //        Trailer,
+        //        TrailerHeaders,
+        //        Complete
+        //    };
+        //}
     }
 }

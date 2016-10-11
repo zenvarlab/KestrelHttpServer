@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Channels;
 using Microsoft.AspNetCore.Server.Kestrel.Internal;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.Server.KestrelTests.TestHelpers;
 using Microsoft.AspNetCore.Testing;
 using Moq;
 using Xunit;
+using MemoryPool = Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure.MemoryPool;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
 {
@@ -157,32 +159,32 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [Fact]
         public async Task PeekAsyncRereturnsTheSameData()
         {
-            using (var memory = new MemoryPool())
-            using (var socketInput = new SocketInput(memory, new SynchronousThreadPool()))
+            using (var channelFactory = new ChannelFactory())
             {
-                socketInput.IncomingData(new byte[5], 0, 5);
+                Channel socketInput = channelFactory.CreateChannel();
+                await socketInput.WriteAsync(new byte[5]);
 
-                Assert.True(socketInput.IsCompleted);
+                Assert.True(socketInput.ReadAsync().IsCompleted);
                 Assert.Equal(5, (await socketInput.PeekAsync()).Count);
 
                 // The same 5 bytes will be returned again since it hasn't been consumed.
-                Assert.True(socketInput.IsCompleted);
+                Assert.True(socketInput.ReadAsync().IsCompleted);
                 Assert.Equal(5, (await socketInput.PeekAsync()).Count);
 
-                var scan = socketInput.ConsumingStart();
-                scan.Skip(3);
-                socketInput.ConsumingComplete(scan, scan);
+                var scan = await socketInput.ReadAsync();
+                var readCursor = scan.Buffer.Start.Seek(3);
+                socketInput.AdvanceReader(readCursor, readCursor);
 
                 // The remaining 2 unconsumed bytes will be returned.
-                Assert.True(socketInput.IsCompleted);
+                Assert.True(socketInput.ReadAsync().IsCompleted);
                 Assert.Equal(2, (await socketInput.PeekAsync()).Count);
 
-                scan = socketInput.ConsumingStart();
-                scan.Skip(2);
-                socketInput.ConsumingComplete(scan, scan);
+                scan = await socketInput.ReadAsync();
+                readCursor = scan.Buffer.Start.Seek(3);
+                socketInput.AdvanceReader(readCursor, readCursor);
 
                 // Everything has been consume so socketInput is no longer in the completed state
-                Assert.False(socketInput.IsCompleted);
+                Assert.False(socketInput.ReadAsync().IsCompleted);
             }
         }
 
@@ -209,23 +211,19 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         [Fact]
         public async Task CompleteAwaitingDoesNotCauseZeroLengthPeek()
         {
-            using (var memory = new MemoryPool())
-            using (var socketInput = new SocketInput(memory, new SynchronousThreadPool()))
-            {
-                socketInput.IncomingData(new byte[5], 0, 5);
-                Assert.Equal(5, (await socketInput.PeekAsync()).Count);
+            var socketInput = new ChannelFactory().CreateChannel();
+            await socketInput.WriteAsync(new byte[5]);
+            Assert.Equal(5, (await socketInput.PeekAsync()).Count);
 
-                var scan = socketInput.ConsumingStart();
-                scan.Skip(5);
-                socketInput.ConsumingComplete(scan, scan);
+            var scan = await socketInput.ReadAsync();
+            socketInput.AdvanceReader(scan.Buffer.End, scan.Buffer.End);
 
-                var peekTask = socketInput.PeekAsync();
-                socketInput.CompleteAwaiting();
-                Assert.False(peekTask.IsCompleted);
+            var peekTask = socketInput.PeekAsync();
+            await socketInput.WriteAsync(new byte[0]);
+            Assert.False(peekTask.IsCompleted);
 
-                socketInput.IncomingData(new byte[5], 0, 5);
-                Assert.Equal(5, (await socketInput.PeekAsync()).Count);
-            }
+            await socketInput.WriteAsync(new byte[5]);
+            Assert.Equal(5, (await socketInput.PeekAsync()).Count);
         }
 
         private static void TestConcurrentFaultedTask(Task t)
