@@ -172,7 +172,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 Assert.Equal(5, (await socketInput.PeekAsync()).Count);
 
                 var scan = await socketInput.ReadAsync();
-                var readCursor = scan.Buffer.Start.Seek(3);
+                var readCursor = scan.Buffer.Slice(3).Start;
                 socketInput.AdvanceReader(readCursor, readCursor);
 
                 // The remaining 2 unconsumed bytes will be returned.
@@ -180,7 +180,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 Assert.Equal(2, (await socketInput.PeekAsync()).Count);
 
                 scan = await socketInput.ReadAsync();
-                readCursor = scan.Buffer.Start.Seek(3);
+                readCursor = scan.Buffer.Slice(3).Start;
                 socketInput.AdvanceReader(readCursor, readCursor);
 
                 // Everything has been consume so socketInput is no longer in the completed state

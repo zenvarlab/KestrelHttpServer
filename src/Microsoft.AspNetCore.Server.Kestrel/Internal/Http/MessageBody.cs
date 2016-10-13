@@ -216,7 +216,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var scan = _context.Input.ReadAsync();
             Debug.Assert(scan.IsCompleted);
             var result = scan.GetResult();
-            var readCursor = result.Buffer.Start.Seek(count);
+            var readCursor = result.Buffer.Slice(count).Start;
             _context.Input.AdvanceReader(readCursor, readCursor);
 
             OnConsumedBytes(count);
