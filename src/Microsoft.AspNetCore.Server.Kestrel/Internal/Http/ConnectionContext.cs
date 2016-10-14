@@ -23,9 +23,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         //public SocketInput SocketInput { get; set; }
 
-        public ISocketOutput SocketOutput { get; set; }
-
         public Channel Input { get; set; }
+
+        public Channel Output { get; set; }
 
         public IConnectionControl ConnectionControl { get; set; }
 

@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Primitives;
+using Channels;
+using Channels.Text.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {
@@ -9010,7 +9012,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             ((ICollection<KeyValuePair<string, StringValues>>)MaybeUnknown)?.CopyTo(array, arrayIndex);
         }
         
-        protected void CopyToFast(ref MemoryPoolIterator output)
+        protected void CopyToFast(ref WritableBuffer output)
         {
             
                 if (((_bits & 1L) != 0))
@@ -9019,8 +9021,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 0, 17);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 0, 17));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9029,15 +9031,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 { 
                     if (_headers._rawConnection != null)
                     {
-                        output.CopyFrom(_headers._rawConnection, 0, _headers._rawConnection.Length);
+                        output.Write(_headers._rawConnection);
                     }
                     else 
                         foreach (var value in _headers._Connection)
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 17, 14);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 17, 14));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9046,15 +9048,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 { 
                     if (_headers._rawDate != null)
                     {
-                        output.CopyFrom(_headers._rawDate, 0, _headers._rawDate.Length);
+                        output.Write(_headers._rawDate);
                     }
                     else 
                         foreach (var value in _headers._Date)
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 31, 8);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 31, 8));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9065,8 +9067,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 39, 14);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 39, 14));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9077,8 +9079,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 53, 10);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 53, 10));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9089,8 +9091,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 63, 11);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 63, 11));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9099,15 +9101,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 { 
                     if (_headers._rawTransferEncoding != null)
                     {
-                        output.CopyFrom(_headers._rawTransferEncoding, 0, _headers._rawTransferEncoding.Length);
+                        output.Write(_headers._rawTransferEncoding);
                     }
                     else 
                         foreach (var value in _headers._TransferEncoding)
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 74, 21);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 74, 21));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9118,8 +9120,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 95, 11);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 95, 11));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9130,8 +9132,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 106, 7);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 106, 7));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9142,8 +9144,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 113, 11);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 113, 11));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9154,8 +9156,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 124, 9);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 124, 9));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9164,15 +9166,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 { 
                     if (_headers._rawContentLength != null)
                     {
-                        output.CopyFrom(_headers._rawContentLength, 0, _headers._rawContentLength.Length);
+                        output.Write(_headers._rawContentLength);
                     }
                     else 
                         foreach (var value in _headers._ContentLength)
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 133, 18);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 133, 18));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9183,8 +9185,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 151, 16);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 151, 16));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9195,8 +9197,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 167, 20);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 167, 20));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9207,8 +9209,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 187, 20);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 187, 20));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9219,8 +9221,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 207, 20);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 207, 20));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9231,8 +9233,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 227, 15);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 227, 15));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9243,8 +9245,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 242, 17);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 242, 17));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9255,8 +9257,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 259, 11);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 259, 11));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9267,8 +9269,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 270, 17);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 270, 17));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9279,8 +9281,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 287, 17);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 287, 17));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9291,8 +9293,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 304, 7);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 304, 7));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9303,8 +9305,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 311, 8);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 311, 8));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9315,8 +9317,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 319, 12);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 319, 12));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9327,8 +9329,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 331, 21);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 331, 21));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9339,8 +9341,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 352, 15);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 352, 15));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9349,15 +9351,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 { 
                     if (_headers._rawServer != null)
                     {
-                        output.CopyFrom(_headers._rawServer, 0, _headers._rawServer.Length);
+                        output.Write(_headers._rawServer);
                     }
                     else 
                         foreach (var value in _headers._Server)
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 367, 10);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 367, 10));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9368,8 +9370,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 377, 14);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 377, 14));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9380,8 +9382,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 391, 8);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 391, 8));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9392,8 +9394,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 399, 20);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 399, 20));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9404,8 +9406,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 419, 36);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 419, 36));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9416,8 +9418,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 455, 32);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 455, 32));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9428,8 +9430,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 487, 32);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 487, 32));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9440,8 +9442,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 519, 31);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 519, 31));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9452,8 +9454,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 550, 33);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 550, 33));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }
@@ -9464,8 +9466,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             if (value != null)
                             {
-                                output.CopyFrom(_headerBytes, 583, 26);
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, 583, 26));
+                                output.WriteAsciiString(value);
                             }
                         }
                 }

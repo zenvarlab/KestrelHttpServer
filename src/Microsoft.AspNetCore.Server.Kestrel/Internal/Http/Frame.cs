@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -84,7 +85,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         {
             ConnectionContext = context;
             Input = context.Input;
-            SocketOutput = context.SocketOutput;
+            Output = context.Output;
 
             ServerOptions = context.ListenerContext.ServiceContext.ServerOptions;
 
@@ -97,7 +98,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public ConnectionContext ConnectionContext { get; }
         public Channel Input { get; set; }
-        public ISocketOutput SocketOutput { get; set; }
+        public Channel Output { get; set; }
         public Action<IFeatureCollection> PrepareRequest
         {
             get
@@ -507,40 +508,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         public void Flush()
         {
-            ProduceStartAndFireOnStarting().GetAwaiter().GetResult();
-            SocketOutput.Write(_emptyData);
+            FlushAsync(default(CancellationToken)).GetAwaiter().GetResult();
         }
 
         public async Task FlushAsync(CancellationToken cancellationToken)
         {
             await ProduceStartAndFireOnStarting();
-            await SocketOutput.WriteAsync(_emptyData, cancellationToken: cancellationToken);
+            await Output.WriteAsync(_emptyData/*, cancellationToken: cancellationToken*/);
         }
 
         public void Write(ArraySegment<byte> data)
         {
-            ProduceStartAndFireOnStarting().GetAwaiter().GetResult();
-            _responseBytesWritten += data.Count;
-
-            if (_canHaveBody)
-            {
-                if (_autoChunk)
-                {
-                    if (data.Count == 0)
-                    {
-                        return;
-                    }
-                    WriteChunked(data);
-                }
-                else
-                {
-                    SocketOutput.Write(data);
-                }
-            }
-            else
-            {
-                HandleNonBodyResponseWrite();
-            }
+            WriteAsync(data, default(CancellationToken)).GetAwaiter().GetResult();
         }
 
         public Task WriteAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
@@ -564,7 +543,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
                 else
                 {
-                    return SocketOutput.WriteAsync(data, cancellationToken: cancellationToken);
+                    return Output.WriteAsync(data /*, cancellationToken: cancellationToken*/);
                 }
             }
             else
@@ -591,7 +570,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 }
                 else
                 {
-                    await SocketOutput.WriteAsync(data, cancellationToken: cancellationToken);
+                    await Output.WriteAsync(data/*, cancellationToken: cancellationToken*/);
                 }
             }
             else
@@ -600,20 +579,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 return;
             }
         }
-
-        private void WriteChunked(ArraySegment<byte> data)
-        {
-            SocketOutput.Write(data, chunk: true);
-        }
-
         private Task WriteChunkedAsync(ArraySegment<byte> data, CancellationToken cancellationToken)
         {
-            return SocketOutput.WriteAsync(data, chunk: true, cancellationToken: cancellationToken);
+            return Output.WriteAsync(data /*, chunk: true, cancellationToken: cancellationToken*/);
         }
 
         private Task WriteChunkedResponseSuffix()
         {
-            return SocketOutput.WriteAsync(_endChunkedResponseBytes);
+            return Output.WriteAsync(_endChunkedResponseBytes);
         }
 
         private static ArraySegment<byte> CreateAsciiByteArraySegment(string text)
@@ -634,7 +607,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 RequestHeaders.TryGetValue("Expect", out expect) &&
                 (expect.FirstOrDefault() ?? "").Equals("100-continue", StringComparison.OrdinalIgnoreCase))
             {
-                SocketOutput.Write(_continueBytes);
+                Output.WriteAsync(_continueBytes).GetAwaiter().GetResult();
             }
         }
 
@@ -732,7 +705,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             ProduceStart(appCompleted: true);
 
             // Force flush
-            await SocketOutput.WriteAsync(_emptyData);
+            await Output.WriteAsync(_emptyData);
 
             await WriteSuffix();
         }
@@ -776,7 +749,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var responseHeaders = FrameResponseHeaders;
             var hasConnection = responseHeaders.HasConnection;
 
-            var end = SocketOutput.ProducingStart();
+            var end = Output.Alloc();
 
             if (_keepAlive && hasConnection)
             {
@@ -850,12 +823,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 responseHeaders.SetRawDate(dateHeaderValues.String, dateHeaderValues.Bytes);
             }
 
-            end.CopyFrom(_bytesHttpVersion11);
-            end.CopyFrom(statusBytes);
+            end.Write(_bytesHttpVersion11);
+            end.Write(statusBytes);
             responseHeaders.CopyTo(ref end);
-            end.CopyFrom(_bytesEndHeaders, 0, _bytesEndHeaders.Length);
-
-            SocketOutput.ProducingComplete(end);
+            end.Write(new Span<byte>(_bytesEndHeaders, 0, _bytesEndHeaders.Length));
+            end.Commit();
         }
 
 
@@ -869,63 +841,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             Error,
             Done
         }
-
-        struct ReadableBufferReader
-        {
-            private Memory<byte> _currentMemory;
-            private int _index;
-            private MemoryEnumerator _enumerator;
-            private int _overallIndex;
-
-            public ReadableBufferReader(ReadableBuffer buffer)
-            {
-                _index = 0;
-                _overallIndex = 0;
-                _enumerator = buffer.GetEnumerator();
-                if (_enumerator.MoveNext())
-                {
-                    _currentMemory = _enumerator.Current;
-                }
-                else
-                {
-                    _currentMemory = default(Memory<byte>);
-                }
-            }
-
-            public bool End => _currentMemory.IsEmpty;
-            public int Index => _overallIndex;
-
-            public int Peek()
-            {
-                if (_currentMemory.IsEmpty)
-                {
-                    return -1;
-                }
-                return _currentMemory.Span[_index];
-            }
-
-            public int Take()
-            {
-                var value = Peek();
-                _index++;
-                _overallIndex++;
-
-                if (_index >= _currentMemory.Length)
-                {
-                    if (_enumerator.MoveNext())
-                    {
-                        _currentMemory = _enumerator.Current;
-                        _index = 0;
-                    }
-                    else
-                    {
-                        _currentMemory = default(Memory<byte>);
-                    }
-                }
-
-                return value;
-            }
-        }
+        
         public RequestLineStatus TakeStartLine(ref ReadableBuffer input, out ReadCursor consumed)
         {
 //            const int MaxInvalidRequestLineChars = 32;
@@ -951,6 +867,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             StatusLineParserState state = StatusLineParserState.Verb;
             while (state != StatusLineParserState.Done)
             {
+                if (reader.End)
+                {
+                    return RequestLineStatus.Incomplete;
+                }
+
                 switch (state)
                 {
                     case StatusLineParserState.Verb:
@@ -990,7 +911,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                                 state = StatusLineParserState.Version;
                                 break;
                             }
-                            else if (pathEnd > 0 &&  (ch == '\r' || ch == '\n'))
+                            else if (pathEnd > 0 && (ch == '\r' || ch == '\n'))
                             {
                                 state = StatusLineParserState.Error;
                                 break;
@@ -1027,7 +948,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                         {
                             var ch = reader.Take();
                             if ((ch > 'A' && ch < 'Z') ||
-                                ch == '1' ||
+                                ch == '1' || ch == '0' ||
                                 ch == '.' ||
                                 ch == '/')
                             {
@@ -1064,127 +985,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
                         break;
                 }
-                if (reader.End)
-                {
-                    return RequestLineStatus.Incomplete;
-                    //,
-                    //        Log.IsEnabled(LogLevel.Information) ? fullLine.GetAsciiStringEscaped(MaxInvalidRequestLineChars) : string.Empty
-                }
             }
             consumed = input.Slice(reader.Index).Start;
-            //if (_requestProcessingStatus == RequestProcessingStatus.RequestPending)
-            //{
-            //    ConnectionControl.ResetTimeout(_requestHeadersTimeoutMilliseconds, TimeoutAction.SendTimeoutResponse);
-            //}
 
-            //_requestProcessingStatus = RequestProcessingStatus.RequestStarted;
-
-            //ReadableBuffer lineBuffer;
-            //ReadCursor lineBufferCursor;
-            //if (!input.TrySliceTo(_vectorCRs, _vectorLFs, out lineBuffer, out lineBufferCursor))
-            //{
-            //    if (input.Length >= ServerOptions.Limits.MaxRequestLineSize)
-            //    {
-            //        RejectRequest(RequestRejectionReason.RequestLineTooLong);
-            //    }
-            //    else
-            //    {
-            //        return RequestLineStatus.Incomplete;
-            //    }
-            //}
-
-            //if (lineBuffer.Length >= ServerOptions.Limits.MaxRequestLineSize - 2)
-            //{
-            //    RejectRequest(RequestRejectionReason.RequestLineTooLong);
-            //}
-
-            //consumed = input.Slice(lineBufferCursor).Slice(2).Start;
-            //var fullLine = input.Slice(0, consumed);
-
-            //ReadableBuffer pathVersionBuffer;
-            //string method;
-            //if (!lineBuffer.GetKnownMethod(out method))
-            //{
-            //    ReadableBuffer methodBuffer;
-            //    ReadCursor methodCursor;
-            //    if (!lineBuffer.TrySliceTo(_vectorSpaces, out methodBuffer, out methodCursor))
-            //    {
-            //        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-            //            Log.IsEnabled(LogLevel.Information) ? fullLine.GetAsciiStringEscaped(MaxInvalidRequestLineChars) : string.Empty);
-            //    }
-
-            //    method = methodBuffer.GetAsciiString();
-
-            //    if (method == null)
-            //    {
-            //        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-            //            Log.IsEnabled(LogLevel.Information) ? fullLine.GetAsciiStringEscaped(MaxInvalidRequestLineChars) : string.Empty);
-            //    }
-
-            //    // Note: We're not in the fast path any more (GetKnownMethod should have handled any HTTP Method we're aware of)
-            //    // So we can be a tiny bit slower and more careful here.
-            //    for (int i = 0; i < method.Length; i++)
-            //    {
-            //        if (!IsValidTokenChar(method[i]))
-            //        {
-            //            RejectRequest(RequestRejectionReason.InvalidRequestLine,
-            //                Log.IsEnabled(LogLevel.Information) ? fullLine.GetAsciiStringEscaped(MaxInvalidRequestLineChars) : string.Empty);
-            //        }
-            //    }
-            //}
-
-            //pathVersionBuffer = lineBuffer.Slice(method.Length + 1);
-
-            //var needDecode = false;
-
-            //ReadCursor pathBufferCursor;
-            //ReadableBuffer pathBuffer;
-            //if (!pathVersionBuffer.TrySliceTo(_vectorSpaces, out pathBuffer, out pathBufferCursor)
-            //    || pathBuffer.Length == 0)
-            //{
-            //    RejectRequest(RequestRejectionReason.InvalidRequestLine,
-            //        Log.IsEnabled(LogLevel.Information) ? fullLine.GetAsciiStringEscaped(MaxInvalidRequestLineChars) : string.Empty);
-            //}
-            //else
-            //{
-            //    ReadCursor decodeCharCursor;
-            //    ReadableBuffer decodeCharBuffer;
-            //    needDecode = pathVersionBuffer.TrySliceTo(_vectorPercentages, out decodeCharBuffer, out decodeCharCursor);
-            //}
-
-            //// TODO: This is strange
-            //ReadableBuffer versionBuffer = pathVersionBuffer.Slice(pathBufferCursor).Slice(1);
-
-            //ReadCursor pathWithoutQueryCursor;
-            //ReadableBuffer pathWithoutQueryBuffer;
-            //ReadableBuffer queryBuffer;
-            //if (pathBuffer.TrySliceTo(_vectorQuestionMarks, out pathWithoutQueryBuffer, out pathWithoutQueryCursor))
-            //{
-            //    queryBuffer = pathBuffer.Slice(pathWithoutQueryCursor);
-            //}
-            //else
-            //{
-            //    queryBuffer = default(ReadableBuffer);
-            //    pathWithoutQueryBuffer = pathBuffer;
-            //}
-
-            //string httpVersion;
-            //if (!versionBuffer.GetKnownVersion(out httpVersion))
-            //{
-            //    httpVersion = versionBuffer.GetAsciiStringEscaped(9);
-
-            //    if (httpVersion == string.Empty)
-            //    {
-            //        RejectRequest(RequestRejectionReason.InvalidRequestLine,
-            //            Log.IsEnabled(LogLevel.Information) ? fullLine.GetAsciiStringEscaped(MaxInvalidRequestLineChars) : string.Empty);
-            //    }
-            //    else
-            //    {
-            //        RejectRequest(RequestRejectionReason.UnrecognizedHTTPVersion, httpVersion);
-            //    }
-            //}
-
-            //var queryString = queryBuffer.GetAsciiString() ?? string.Empty;
             // URIs are always encoded/escaped to ASCII https://tools.ietf.org/html/rfc3986#page-11
             // Multibyte Internationalized Resource Identifiers (IRIs) are first converted to utf8;
             // then encoded/escaped to ASCII  https://www.ietf.org/rfc/rfc3987.txt "Mapping of IRIs to URIs"
@@ -1193,39 +996,34 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             var queryString = input.Slice(queryStart, queryEnd);
             var pathBuffer = input.Slice(pathStart, pathEnd);
             var pathWithoutQueryBuffer = input.Slice(pathStart, pathStart + pathEnd);
-            //if (false)
-            //{
-            //    //// Read raw target before mutating memory.
-            //    //rawTarget = pathBuffer.GetAsciiString();
-            //    //requestUrlPath = rawTarget;
+            
+            // URI wasn't encoded, parse as ASCII
+            requestUrlPath = pathBuffer.GetAsciiString();
 
-            //    ////TODO: URI was encoded, unescape and then parse as utf8
-            //    ////UrlPathDecoder.Unescape(pathBuffer);
-            //    ////pathBegin.GetUtf8String(pathEnd);
-            //}
-            //else
+            if (queryString.Length == 0)
             {
-                // URI wasn't encoded, parse as ASCII
-                requestUrlPath = pathBuffer.GetAsciiString();
-
-                if (queryString.Length == 0)
-                {
-                    // No need to allocate an extra string if the path didn't need
-                    // decoding and there's no query string following it.
-                    rawTarget = requestUrlPath;
-                }
-                else
-                {
-                    rawTarget = pathWithoutQueryBuffer.GetAsciiString();
-                }
+                // No need to allocate an extra string if the path didn't need
+                // decoding and there's no query string following it.
+                rawTarget = requestUrlPath;
+            }
+            else
+            {
+                rawTarget = pathWithoutQueryBuffer.GetAsciiString();
             }
 
             var normalizedTarget = PathNormalizer.RemoveDotSegments(requestUrlPath);
 
-            Method = input.Slice(0, verbEnd).GetAsciiString();
-            QueryString = input.Slice(queryStart, queryEnd).GetAsciiString()?? string.Empty;
+            var methodBuffer = input.Slice(0, 8);
+            string method;
+            Method = methodBuffer.GetKnownMethod(out method) ? method : methodBuffer.Slice(0, verbEnd).GetAsciiString();
+
+
+            QueryString = input.Slice(queryStart, queryEnd).GetAsciiString() ?? string.Empty;
             RawTarget = input.Slice(pathStart, pathEnd).GetAsciiString();
-            HttpVersion = input.Slice(versionStart, versionEnd).GetAsciiString();
+
+            var versionBuffer = input.Slice(versionStart, versionEnd);
+            string version;
+            HttpVersion = versionBuffer.GetKnownVersion(out version) ? version : versionBuffer.GetAsciiString();
 
             bool caseMatches;
             if (RequestUrlStartsWithPathBase(normalizedTarget, out caseMatches))
@@ -1233,7 +1031,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 PathBase = caseMatches ? _pathBase : normalizedTarget.Substring(0, _pathBase.Length);
                 Path = normalizedTarget.Substring(_pathBase.Length);
             }
-            else if (rawTarget[0] == '/') // check rawTarget since normalizedTarget can be "" or "/" after dot segment removal
+            else if (rawTarget[0] == '/')
+                // check rawTarget since normalizedTarget can be "" or "/" after dot segment removal
             {
                 Path = normalizedTarget;
             }

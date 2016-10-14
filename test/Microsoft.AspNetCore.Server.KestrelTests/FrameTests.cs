@@ -532,7 +532,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
             var connectionContext = new ConnectionContext(listenerContext)
             {
-                SocketOutput = new MockSocketOuptut()
+                Output = null
             };
 
             var frame = new Frame<object>(application: null, context: connectionContext);
@@ -561,7 +561,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
             var connectionContext = new ConnectionContext(listenerContext)
             {
-                SocketOutput = new MockSocketOuptut()
+                Output = null
             };
 
             var frame = new Frame<object>(application: null, context: connectionContext);
@@ -590,7 +590,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
             var connectionContext = new ConnectionContext(listenerContext)
             {
-                SocketOutput = new MockSocketOuptut()
+                Output = null
             };
 
             var frame = new Frame<object>(application: null, context: connectionContext);
@@ -617,7 +617,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
             var connectionContext = new ConnectionContext(listenerContext)
             {
-                SocketOutput = new MockSocketOuptut()
+                Output = null
             };
 
             var frame = new Frame<object>(application: null, context: connectionContext);
@@ -648,7 +648,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
             var connectionContext = new ConnectionContext(listenerContext)
             {
-                SocketOutput = new MockSocketOuptut()
+                Output = null
             };
 
             var frame = new Frame<object>(application: null, context: connectionContext);
@@ -679,7 +679,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
             var connectionContext = new ConnectionContext(listenerContext)
             {
-                SocketOutput = new MockSocketOuptut()
+                Output = null
             };
 
             var frame = new Frame<object>(application: null, context: connectionContext);
@@ -1065,7 +1065,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
             var connectionContext = new ConnectionContext(listenerContext)
             {
-                SocketOutput = new MockSocketOuptut(),
+                Output = null,
             };
             var frame = new Frame<object>(application: null, context: connectionContext);
             frame.InitializeHeaders();
@@ -1092,7 +1092,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
             var connectionContext = new ConnectionContext(listenerContext)
             {
-                SocketOutput = new MockSocketOuptut(),
+                Output = null,
             };
             var frame = new Frame<object>(application: null, context: connectionContext);
             frame.InitializeHeaders();
@@ -1119,7 +1119,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
             var connectionContext = new ConnectionContext(listenerContext)
             {
-                SocketOutput = new MockSocketOuptut(),
+                Output = null,
             };
             var frame = new Frame<object>(application: null, context: connectionContext);
             frame.InitializeHeaders();
@@ -1146,7 +1146,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
             var connectionContext = new ConnectionContext(listenerContext)
             {
-                SocketOutput = new MockSocketOuptut(),
+                Output = null,
             };
             var frame = new Frame<object>(application: null, context: connectionContext);
             frame.InitializeHeaders();
@@ -1173,7 +1173,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
             var connectionContext = new ConnectionContext(listenerContext)
             {
-                SocketOutput = new MockSocketOuptut(),
+                Output = null,
             };
             var frame = new Frame<object>(application: null, context: connectionContext);
             frame.InitializeHeaders();
@@ -1203,7 +1203,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             };
             var connectionContext = new ConnectionContext(listenerContext)
             {
-                SocketOutput = new MockSocketOuptut(),
+                Output = null,
             };
             var frame = new Frame<object>(application: null, context: connectionContext);
             frame.InitializeHeaders();

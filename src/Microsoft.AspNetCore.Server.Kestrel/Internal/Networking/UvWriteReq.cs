@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Channels;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Logging;
 
@@ -41,14 +42,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
 
         public unsafe void Write(
             UvStreamHandle handle,
-            MemoryPoolIterator start,
-            MemoryPoolIterator end,
-            int nBuffers,
+            ReadableBuffer buffer,
             Action<UvWriteReq, int, Exception, object> callback,
             object state)
         {
             try
             {
+                int nBuffers = 0;
+                if (buffer.IsSingleSpan)
+                {
+                    nBuffers = 1;
+                }
+                else
+                {
+                    foreach (var span in buffer)
+                    {
+                        nBuffers++;
+                    }
+                }
+
                 // add GCHandle to keeps this SafeHandle alive while request processing
                 _pins.Add(GCHandle.Alloc(this, GCHandleType.Normal));
 
@@ -62,18 +74,35 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
                     pBuffers = (Libuv.uv_buf_t*)gcHandle.AddrOfPinnedObject();
                 }
 
-                var block = start.Block;
-                for (var index = 0; index < nBuffers; index++)
+
+                if (nBuffers == 1)
                 {
-                    var blockStart = block == start.Block ? start.Index : block.Data.Offset;
-                    var blockEnd = block == end.Block ? end.Index : block.Data.Offset + block.Data.Count;
-
-                    // create and pin each segment being written
-                    pBuffers[index] = Libuv.buf_init(
-                        block.DataArrayPtr + blockStart,
-                        blockEnd - blockStart);
-
-                    block = block.Next;
+                    var memory = buffer.First;
+                    void* pointer;
+                    if (memory.TryGetPointer(out pointer))
+                    {
+                        pBuffers[0] = Libuv.buf_init((IntPtr)pointer, memory.Length);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Memory needs to be pinned");
+                    }
+                }
+                else
+                {
+                    int i = 0;
+                    void* pointer;
+                    foreach (var memory in buffer)
+                    {
+                        if (memory.TryGetPointer(out pointer))
+                        {
+                            pBuffers[i++] = Libuv.buf_init((IntPtr)pointer, memory.Length);
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Memory needs to be pinned");
+                        }
+                    }
                 }
 
                 _callback = callback;
@@ -85,13 +114,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Networking
                 _callback = null;
                 _state = null;
                 Unpin(this);
-
-                var block = start.Block;
-                for (var index = 0; index < nBuffers; index++)
-                {
-                    block = block.Next;
-                }
-
                 throw;
             }
         }

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -24,6 +25,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             (handle, status, state) => ReadCallback(handle, status, state);
         private static readonly Func<UvStreamHandle, int, object, Libuv.uv_buf_t> _allocCallback =
             (handle, suggestedsize, state) => AllocCallback(handle, suggestedsize, state);
+        private static readonly Action<UvWriteReq, int, Exception, object> _writeCallback = WriteCallback;
 
         // Seed the _lastConnectionId for this application instance with
         // the number of 100-nanosecond intervals that have elapsed since 12:00:00 midnight, January 1, 0001
@@ -37,13 +39,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
         //private FilteredStreamAdapter _filteredStreamAdapter;
         //private Task _readInputTask;
 
+        private readonly Queue<PreservedBuffer> _outgoing = new Queue<PreservedBuffer>(1);
+
         private TaskCompletionSource<object> _socketClosedTcs = new TaskCompletionSource<object>();
         private BufferSizeControl _bufferSizeControl;
+        private TaskCompletionSource<object> _drainWrites;
 
         private long _lastTimestamp;
         private long _timeoutTimestamp = long.MaxValue;
         private TimeoutAction _timeoutAction;
         private WritableBuffer _writableBuffer;
+        private Task _sendingTask;
 
         public Connection(ListenerContext context, UvStreamHandle socket) : base(context)
         {
@@ -59,9 +65,9 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             //SocketInput = new SocketInput(Thread.Memory, ThreadPool, _bufferSizeControl);
-            SocketOutput = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
+            //SocketOutput = new SocketOutput(Thread, _socket, this, ConnectionId, Log, ThreadPool);
             Input = Thread.ChannelFactory.CreateChannel();
-
+            Output = Thread.ChannelFactory.CreateChannel();
 
             var tcpHandle = _socket as UvTcpHandle;
             if (tcpHandle != null)
@@ -93,13 +99,14 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             // Start socket prior to applying the ConnectionFilter
             _socket.ReadStart(_allocCallback, _readCallback, this);
 
+            _sendingTask = ProcessWrites();
             if (ServerOptions.ConnectionFilter == null)
             {
                 _frame.Start();
             }
             else
             {
-                _libuvStream = new LibuvStream(Input, SocketOutput);
+                _libuvStream = new LibuvStream(Input, Output);
 
                 _filterContext = new ConnectionFilterContext
                 {
@@ -190,6 +197,84 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             }
 
             Interlocked.Exchange(ref _lastTimestamp, timestamp);
+        }
+
+        private async Task ProcessWrites()
+        {
+            try
+            {
+                while (true)
+                {
+                    var result = await Output.ReadAsync();
+                    var buffer = result.Buffer;
+
+                    try
+                    {
+                        // Make sure we're on the libuv thread
+                        await Thread;
+
+                        if (buffer.IsEmpty && result.IsCompleted)
+                        {
+                            break;
+                        }
+
+                        if (!buffer.IsEmpty)
+                        {
+                            var writeReq = Thread.WriteReqPool.Allocate();
+                            writeReq.Write(this._socket, buffer, _writeCallback, this);
+
+                            // Preserve this buffer for disposal after the write completes
+                            _outgoing.Enqueue(buffer.Preserve());
+                        }
+                    }
+                    finally
+                    {
+                        Output.Advance(buffer.End);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Output.CompleteReader(ex);
+            }
+            finally
+            {
+                Output.CompleteReader();
+
+                // Drain the pending writes
+                if (_outgoing.Count > 0)
+                {
+                    _drainWrites = new TaskCompletionSource<object>();
+
+                    await _drainWrites.Task;
+                }
+
+                _socket.Dispose();
+
+                // We'll never call the callback after disposing the handle
+                Input.CompleteWriter();
+            }
+        }
+
+        private static void WriteCallback(UvWriteReq req, int status, Exception ex, object state)
+        {
+            var connection = ((Connection)state);
+
+            var buffer = connection._outgoing.Dequeue();
+
+            // Dispose the preserved buffer
+            buffer.Dispose();
+
+            // Return the WriteReq
+            connection.Thread.WriteReqPool.Return(req);
+
+            if (connection._drainWrites != null)
+            {
+                if (connection._outgoing.Count == 0)
+                {
+                    connection._drainWrites.TrySetResult(null);
+                }
+            }
         }
 
         private void ApplyConnectionFilter(){
@@ -334,7 +419,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 case ProduceEndType.SocketShutdown:
                 case ProduceEndType.SocketDisconnect:
                     Log.ConnectionDisconnect(ConnectionId);
-                    ((SocketOutput)SocketOutput).End(endType);
+                    Output.CompleteWriter();
+                    //((SocketOutput)SocketOutput).End(endType);
                     break;
             }
         }

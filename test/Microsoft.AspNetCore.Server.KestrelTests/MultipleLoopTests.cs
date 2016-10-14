@@ -78,20 +78,20 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                 var start = new MemoryPoolIterator(block, 0);
                 var end = new MemoryPoolIterator(block, block.Data.Count);
-                writeRequest.Write(
-                    serverConnectionPipe,
-                    start,
-                    end,
-                    1,
-                    (handle, status2, error2, state2) =>
-                    {
-                        writeRequest.Dispose();
-                        serverConnectionPipe.Dispose();
-                        serverListenPipe.Dispose();
-                        pool.Return(block);
-                        pool.Dispose();
-                    },
-                    null);
+                //writeRequest.Write(
+                //    serverConnectionPipe,
+                //    start,
+                //    end,
+                //    1,
+                //    (handle, status2, error2, state2) =>
+                //    {
+                //        writeRequest.Dispose();
+                //        serverConnectionPipe.Dispose();
+                //        serverListenPipe.Dispose();
+                //        pool.Return(block);
+                //        pool.Dispose();
+                //    },
+                //    null);
             }, null);
 
             var worker = new Thread(() =>

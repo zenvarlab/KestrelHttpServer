@@ -201,6 +201,8 @@ using System;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Primitives;
+using Channels;
+using Channels.Text.Primitives;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 {{
@@ -393,22 +395,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             ((ICollection<KeyValuePair<string, StringValues>>)MaybeUnknown)?.CopyTo(array, arrayIndex);
         }}
         {(loop.ClassName == "FrameResponseHeaders" ? $@"
-        protected void CopyToFast(ref MemoryPoolIterator output)
+        protected void CopyToFast(ref WritableBuffer output)
         {{
             {Each(loop.Headers, header => $@"
                 if ({header.TestBit()})
                 {{ {(header.EnhancedSetter == false ? "" : $@"
                     if (_headers._raw{header.Identifier} != null)
                     {{
-                        output.CopyFrom(_headers._raw{header.Identifier}, 0, _headers._raw{header.Identifier}.Length);
+                        output.Write(_headers._raw{header.Identifier});
                     }}
                     else ")}
                         foreach (var value in _headers._{header.Identifier})
                         {{
                             if (value != null)
                             {{
-                                output.CopyFrom(_headerBytes, {header.BytesOffset}, {header.BytesCount});
-                                output.CopyFromAscii(value);
+                                output.Write(new Span<byte>(_headerBytes, {header.BytesOffset}, {header.BytesCount}));
+                                output.WriteAsciiString(value);
                             }}
                         }}
                 }}

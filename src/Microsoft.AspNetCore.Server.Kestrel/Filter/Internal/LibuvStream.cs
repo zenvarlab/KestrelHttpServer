@@ -14,11 +14,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
     public class LibuvStream : Stream
     {
         private readonly IReadableChannel _input;
-        private readonly ISocketOutput _output;
+        private readonly IWritableChannel _output;
 
         private Task<int> _cachedTask = TaskCache<int>.DefaultCompletedTask;
 
-        public LibuvStream(IReadableChannel input, ISocketOutput output)
+        public LibuvStream(IReadableChannel input, IWritableChannel output)
         {
             _input = input;
             _output = output;
@@ -90,16 +90,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            ArraySegment<byte> segment;
-            if (buffer != null)
-            {
-                segment = new ArraySegment<byte>(buffer, offset, count);
-            }
-            else
-            {
-                segment = default(ArraySegment<byte>);
-            }
-            _output.Write(segment);
+            WriteAsync(buffer, offset, count).GetAwaiter().GetResult();
         }
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken token)
@@ -113,7 +104,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Filter.Internal
             {
                 segment = default(ArraySegment<byte>);
             }
-            return _output.WriteAsync(segment, cancellationToken: token);
+            return _output.WriteAsync(segment);
         }
 
         public override void Flush()

@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
+using Channels;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Http;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
@@ -33,5 +35,11 @@ namespace Microsoft.AspNetCore.Server.KestrelTests.TestHelpers
         {
             input.IncomingComplete(0, null);
         }
+
+        public static async Task<ReadableBuffer> ReadBufferAsync(this IReadableChannel input)
+        {
+            return (await input.ReadAsync()).Buffer;
+        }
+
     }
 }

@@ -185,17 +185,17 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
                                 var start = new MemoryPoolIterator(block, 0);
                                 var end = new MemoryPoolIterator(block, block.Data.Count);
-                                req.Write(
-                                    tcp2,
-                                    start,
-                                    end,
-                                    1,
-                                    (_1, _2, _3, _4) =>
-                                    {
-                                        pool.Return(block);
-                                        pool.Dispose();
-                                    },
-                                    null);
+                                //req.Write(
+                                //    tcp2,
+                                //    start,
+                                //    end,
+                                //    1,
+                                //    (_1, _2, _3, _4) =>
+                                //    {
+                                //        pool.Return(block);
+                                //        pool.Dispose();
+                                //    },
+                                //    null);
                             }
                         }
                     },

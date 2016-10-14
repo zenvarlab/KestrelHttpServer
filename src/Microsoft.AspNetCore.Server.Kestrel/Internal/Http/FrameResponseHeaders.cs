@@ -3,6 +3,8 @@
 
 using System.Collections;
 using System.Collections.Generic;
+using Channels;
+using Channels.Text.Primitives;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Infrastructure;
 using Microsoft.Extensions.Primitives;
 
@@ -33,7 +35,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             return GetEnumerator();
         }
 
-        public void CopyTo(ref MemoryPoolIterator output)
+        public void CopyTo(ref WritableBuffer output)
         {
             CopyToFast(ref output);
             if (MaybeUnknown != null)
@@ -44,10 +46,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                     {
                         if (value != null)
                         {
-                            output.CopyFrom(_CrLf, 0, 2);
-                            output.CopyFromAscii(kv.Key);
-                            output.CopyFrom(_colonSpace, 0, 2);
-                            output.CopyFromAscii(value);
+                            output.Write(_CrLf);
+                            output.WriteAsciiString(kv.Key);
+                            output.Write(_colonSpace);
+                            output.WriteAsciiString(value);
                         }
                     }
                 }
