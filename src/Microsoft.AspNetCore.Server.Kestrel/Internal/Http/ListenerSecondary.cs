@@ -56,6 +56,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private void StartedCallback(TaskCompletionSource<int> tcs)
         {
+            Log.LogError(0, "{0}: ListenerSecondary.StartedCallback, Pipe name: {1}", DateTime.UtcNow, _pipeName);
+
             try
             {
                 DispatchPipe.Init(Thread.Loop, Thread.QueueCloseHandle, true);
@@ -82,6 +84,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private void ConnectedCallback(UvConnectRequest connect, int status, Exception error, TaskCompletionSource<int> tcs)
         {
+            Log.LogError(0, "{0}: ListenerSecondary.ConnectedCallback, Pipe name: {1}, Status: {2}", DateTime.UtcNow, _pipeName, status);
+
             connect.Dispose();
             if (error != null)
             {

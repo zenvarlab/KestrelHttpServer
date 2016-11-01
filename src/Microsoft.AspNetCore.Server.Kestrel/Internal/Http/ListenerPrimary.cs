@@ -55,6 +55,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private void PostCallback()
         {
+            Log.LogError(0, "{0}: ListenerPrimary.PostCallback, Pipe name: {1}", DateTime.UtcNow, _pipeName);
+
             ListenPipe = new UvPipeHandle(Log);
             ListenPipe.Init(Thread.Loop, Thread.QueueCloseHandle, false);
             ListenPipe.Bind(_pipeName);
@@ -64,6 +66,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
         private void OnListenPipe(UvStreamHandle pipe, int status, Exception error)
         {
+            Log.LogError(0, "{0}: ListenerPrimary.OnListenPipe, Pipe name: {1}, Status: {2}, Index: {3}", DateTime.UtcNow, _pipeName, status, _dispatchPipes.Count);
+
             if (status < 0)
             {
                 return;

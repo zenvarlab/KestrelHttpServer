@@ -14,7 +14,7 @@ namespace SampleApp
     {
         public void Configure(IApplicationBuilder app, ILoggerFactory loggerFactory)
         {
-            loggerFactory.AddConsole(LogLevel.Trace);
+            loggerFactory.AddConsole(LogLevel.Error);
             var logger = loggerFactory.CreateLogger("Default");
 
             app.Run(async context =>
@@ -36,12 +36,13 @@ namespace SampleApp
             var host = new WebHostBuilder()
                 .UseKestrel(options =>
                 {
-                    // options.ThreadCount = 4;
+                    options.ThreadCount = 8;
                     options.NoDelay = true;
-                    options.UseHttps("testCert.pfx", "testPassword");
-                    options.UseConnectionLogging();
+                    //options.UseHttps("testCert.pfx", "testPassword");
+                    //options.UseConnectionLogging();
                 })
-                .UseUrls("http://localhost:5000", "https://localhost:5001")
+                //.UseUrls("http://localhost:5000", "https://localhost:5001")
+                .UseUrls("http://127.0.0.1:5000")
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>()
                 .Build();
