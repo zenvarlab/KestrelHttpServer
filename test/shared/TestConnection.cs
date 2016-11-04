@@ -50,22 +50,6 @@ namespace Microsoft.AspNetCore.Testing
             _stream.Flush();
         }
 
-        public async Task SendAllTryEnd(params string[] lines)
-        {
-            await SendAll(lines);
-
-            try
-            {
-                _socket.Shutdown(SocketShutdown.Send);
-            }
-            catch (IOException)
-            {
-                // The server may forcefully close the connection (usually due to a bad request),
-                // so an IOException: "An existing connection was forcibly closed by the remote host"
-                // isn't guaranteed but not unexpected.
-            }
-        }
-
         public async Task Send(params string[] lines)
         {
             var text = string.Join("\r\n", lines);
@@ -82,12 +66,6 @@ namespace Microsoft.AspNetCore.Testing
             _stream.Flush();
         }
 
-        public async Task SendEnd(params string[] lines)
-        {
-            await Send(lines);
-            _socket.Shutdown(SocketShutdown.Send);
-        }
-
         public async Task Receive(params string[] lines)
         {
             var expected = string.Join("\r\n", lines);
@@ -95,6 +73,8 @@ namespace Microsoft.AspNetCore.Testing
             var offset = 0;
             while (offset < expected.Length)
             {
+                var data = new byte[128];
+                _socket.Receive(data);
                 var task = _reader.ReadAsync(actual, offset, actual.Length - offset);
                 if (!Debugger.IsAttached)
                 {
@@ -108,13 +88,14 @@ namespace Microsoft.AspNetCore.Testing
                 offset += count;
             }
 
-            Assert.Equal(expected, new String(actual, 0, offset));
+            Assert.Equal(expected, new string(actual, 0, offset));
         }
 
         public async Task ReceiveEnd(params string[] lines)
         {
             await Receive(lines);
             var ch = new char[128];
+            _socket.Shutdown(SocketShutdown.Send);
             var count = await _reader.ReadAsync(ch, 0, 128).TimeoutAfter(TimeSpan.FromMinutes(1));
             var text = new string(ch, 0, count);
             Assert.Equal("", text);

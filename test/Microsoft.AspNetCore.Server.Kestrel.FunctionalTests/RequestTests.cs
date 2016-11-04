@@ -16,7 +16,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Internal.Networking;
+using Microsoft.AspNetCore.Testing;
 using Microsoft.AspNetCore.Testing.xunit;
+using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
 using Newtonsoft.Json;
@@ -417,6 +419,42 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
 
                 Assert.True(await appDone.WaitAsync(_semaphoreWaitTimeout));
                 Assert.True(expectedExceptionThrown);
+            }
+        }
+
+        [Fact]
+        public async Task RequestAbortedTokenFiredOnClientFIN()
+        {
+            var appStartedTcs = new TaskCompletionSource<object>();
+            var requestAbortedTcs = new TaskCompletionSource<object>();
+            var builder = new WebHostBuilder()
+                .UseKestrel()
+                .UseUrls($"http://127.0.0.1:0")
+                .Configure(app => app.Run(async context =>
+                {
+                    appStartedTcs.SetResult(null);
+
+                    var requestAborted = context.RequestAborted;
+                    requestAborted.Register(() => requestAbortedTcs.SetResult(null));
+
+                    while (!requestAborted.IsCancellationRequested)
+                    {
+                        await context.Response.WriteAsync("a");
+                    }
+                }));
+
+            using (var host = builder.Build())
+            {
+                host.Start();
+
+                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+                {
+                    socket.Connect(new IPEndPoint(IPAddress.Loopback, host.GetPort()));
+                    socket.Send(Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\n\r\n"));
+                    await appStartedTcs.Task;
+                    socket.Shutdown(SocketShutdown.Send);
+                    await requestAbortedTcs.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+                }
             }
         }
 

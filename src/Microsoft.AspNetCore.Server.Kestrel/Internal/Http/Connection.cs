@@ -200,7 +200,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
                 _frame.SocketInput = _filteredStreamAdapter.SocketInput;
                 _frame.SocketOutput = _filteredStreamAdapter.SocketOutput;
 
-                _readInputTask = _filteredStreamAdapter.ReadInputAsync();
+                _readInputTask = _filteredStreamAdapter.ReadInputAsync().ContinueWith((task, state) =>
+                {
+                    var connection = (Connection)state;
+                    connection._filteredStreamAdapter.Dispose();
+                }, this);
             }
 
             _frame.PrepareRequest = _filterContext.PrepareRequest;
@@ -278,7 +282,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             SocketInput.IncomingComplete(readCount, error);
 
-            if (errorDone)
+            if (!normalRead)
             {
                 Abort(error);
             }

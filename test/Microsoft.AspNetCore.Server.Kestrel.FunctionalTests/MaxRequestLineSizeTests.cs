@@ -31,7 +31,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 using (var connection = new TestConnection(server.Port))
                 {
-                    await connection.SendEnd(request);
+                    await connection.Send($"{requestLine}\r\n");
                     await connection.ReceiveEnd(
                         "HTTP/1.1 200 OK",
                         $"Date: {server.Context.DateHeaderValue}",
@@ -57,8 +57,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
             {
                 using (var connection = new TestConnection(server.Port))
                 {
-                    await connection.SendAllTryEnd($"{requestLine}\r\n");
-                    await connection.Receive(
+                    await connection.SendAll($"{requestLine}\r\n");
+                    await connection.ReceiveForcedEnd(
                         "HTTP/1.1 414 URI Too Long",
                         "Connection: close",
                         $"Date: {server.Context.DateHeaderValue}",

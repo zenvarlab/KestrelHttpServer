@@ -42,7 +42,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 using (var connection = server.CreateConnection())
                 {
                     // "?" changes to "!"
-                    await connection.SendEnd(sendString);
+                    await connection.Send(sendString);
                     await connection.ReceiveEnd(
                         "HTTP/1.1 200 OK",
                         "Connection: close",
@@ -64,7 +64,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             {
                 using (var connection = server.CreateConnection())
                 {
-                    await connection.SendEnd(
+                    await connection.Send(
                         "POST / HTTP/1.0",
                         "Content-Length: 12",
                         "",
@@ -89,7 +89,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 using (var connection = server.CreateConnection())
                 {
                     // Will throw because the exception in the connection filter will close the connection.
-                    await Assert.ThrowsAsync<IOException>(async () => await connection.SendEnd(
+                    await Assert.ThrowsAsync<IOException>(async () => await connection.Send(
                         "POST / HTTP/1.0",
                         "Content-Length: 12",
                         "",
