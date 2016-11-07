@@ -181,7 +181,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             {
                 using (var connection = server.CreateConnection())
                 {
-                    await connection.SendEnd($"{method} / HTTP/1.1\r\n\r\n");
+                    await connection.Send($"{method} / HTTP/1.1\r\n\r\n");
                     await ReceiveBadRequestResponse(connection, "411 Length Required", server.Context.DateHeaderValue);
                 }
             }
@@ -196,7 +196,7 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
             {
                 using (var connection = server.CreateConnection())
                 {
-                    await connection.SendEnd($"{method} / HTTP/1.0\r\n\r\n");
+                    await connection.Send($"{method} / HTTP/1.0\r\n\r\n");
                     await ReceiveBadRequestResponse(connection, "400 Bad Request", server.Context.DateHeaderValue);
                 }
             }

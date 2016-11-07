@@ -73,12 +73,11 @@ namespace Microsoft.AspNetCore.Testing
             var offset = 0;
             while (offset < expected.Length)
             {
-                var data = new byte[128];
-                _socket.Receive(data);
+                var data = new byte[expected.Length];
                 var task = _reader.ReadAsync(actual, offset, actual.Length - offset);
                 if (!Debugger.IsAttached)
                 {
-                    Assert.True(await Task.WhenAny(task, Task.Delay(TimeSpan.FromMinutes(1))) == task, "TestConnection.Receive timed out.");
+                    Assert.True(await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(10))) == task, "TestConnection.Receive timed out.");
                 }
                 var count = await task;
                 if (count == 0)
