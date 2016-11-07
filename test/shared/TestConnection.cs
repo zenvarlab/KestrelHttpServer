@@ -94,8 +94,8 @@ namespace Microsoft.AspNetCore.Testing
         {
             await Receive(lines);
             var ch = new char[128];
-            _socket.Shutdown(SocketShutdown.Send);
-            var count = await _reader.ReadAsync(ch, 0, 128).TimeoutAfter(TimeSpan.FromMinutes(1));
+            _socket.Shutdown(SocketShutdown.Both);
+            var count = await _reader.ReadAsync(ch, 0, 128).TimeoutAfter(TimeSpan.FromSeconds(10));
             var text = new string(ch, 0, count);
             Assert.Equal("", text);
         }
@@ -107,7 +107,7 @@ namespace Microsoft.AspNetCore.Testing
             try
             {
                 var ch = new char[128];
-                var count = await _reader.ReadAsync(ch, 0, 128).TimeoutAfter(TimeSpan.FromMinutes(1));
+                var count = await _reader.ReadAsync(ch, 0, 128).TimeoutAfter(TimeSpan.FromSeconds(10));
                 var text = new string(ch, 0, count);
                 Assert.Equal("", text);
             }
