@@ -760,30 +760,22 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
 
             if (!HasResponseStarted)
             {
-                return ProduceEndAwaited();
+                ProduceStart(appCompleted: true);
             }
 
             return WriteSuffix();
         }
 
-        private async Task ProduceEndAwaited()
-        {
-            ProduceStart(appCompleted: true);
-
-            // Force flush
-            await SocketOutput.FlushAsync();
-
-            await WriteSuffix();
-        }
-
-        private Task WriteSuffix()
+        private async Task WriteSuffix()
         {
             // _autoChunk should be checked after we are sure ProduceStart() has been called
             // since ProduceStart() may set _autoChunk to true.
             if (_autoChunk)
             {
-                return WriteAutoChunkSuffixAwaited();
+                await WriteChunkedResponseSuffix();
             }
+
+            await SocketOutput.FlushAsync();
 
             if (_keepAlive)
             {
@@ -793,18 +785,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Internal.Http
             if (HttpMethods.IsHead(Method) && _responseBytesWritten > 0)
             {
                 Log.ConnectionHeadResponseBodyWrite(ConnectionId, _responseBytesWritten);
-            }
-
-            return TaskCache.CompletedTask;
-        }
-
-        private async Task WriteAutoChunkSuffixAwaited()
-        {
-            await WriteChunkedResponseSuffix();
-
-            if (_keepAlive)
-            {
-                ConnectionControl.End(ProduceEndType.ConnectionKeepAlive);
             }
         }
 

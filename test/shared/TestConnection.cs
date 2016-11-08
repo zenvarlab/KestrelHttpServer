@@ -77,7 +77,7 @@ namespace Microsoft.AspNetCore.Testing
                 var task = _reader.ReadAsync(actual, offset, actual.Length - offset);
                 if (!Debugger.IsAttached)
                 {
-                    Assert.True(await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(10))) == task, "TestConnection.Receive timed out.");
+                    Assert.True(await Task.WhenAny(task, Task.Delay(TimeSpan.FromMinutes(1))) == task, "TestConnection.Receive timed out.");
                 }
                 var count = await task;
                 if (count == 0)
@@ -93,11 +93,8 @@ namespace Microsoft.AspNetCore.Testing
         public async Task ReceiveEnd(params string[] lines)
         {
             await Receive(lines);
-            var ch = new char[128];
             _socket.Shutdown(SocketShutdown.Both);
-            var count = await _reader.ReadAsync(ch, 0, 128).TimeoutAfter(TimeSpan.FromSeconds(10));
-            var text = new string(ch, 0, count);
-            Assert.Equal("", text);
+            await WaitForConnectionClose();
         }
 
         public async Task ReceiveForcedEnd(params string[] lines)
@@ -107,7 +104,7 @@ namespace Microsoft.AspNetCore.Testing
             try
             {
                 var ch = new char[128];
-                var count = await _reader.ReadAsync(ch, 0, 128).TimeoutAfter(TimeSpan.FromSeconds(10));
+                var count = await _reader.ReadAsync(ch, 0, 128).TimeoutAfter(TimeSpan.FromMinutes(1));
                 var text = new string(ch, 0, count);
                 Assert.Equal("", text);
             }
@@ -137,11 +134,9 @@ namespace Microsoft.AspNetCore.Testing
 
         private void ReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
-            if (e.BytesTransferred == 0)
-            {
-                var tcs = (TaskCompletionSource<object>)e.UserToken;
-                tcs.SetResult(null);
-            }
+            Assert.Equal(0, e.BytesTransferred);
+            var tcs = (TaskCompletionSource<object>)e.UserToken;
+            tcs.SetResult(null);
         }
 
         public static Socket CreateConnectedLoopbackSocket(int port)
