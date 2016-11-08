@@ -3,10 +3,12 @@
 
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Filter;
 using Microsoft.AspNetCore.Testing;
+using Microsoft.Extensions.Internal;
 using Xunit;
 
 namespace Microsoft.AspNetCore.Server.KestrelTests
@@ -17,16 +19,16 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
         {
             var request = httpContext.Request;
             var response = httpContext.Response;
-            while (true)
+            var buffer = new byte[httpContext.Request.ContentLength.Value];
+            var bytesRead = 0;
+
+            while (bytesRead < buffer.Length)
             {
-                var buffer = new byte[8192];
-                var count = await request.Body.ReadAsync(buffer, 0, buffer.Length);
-                if (count == 0)
-                {
-                    break;
-                }
-                await response.Body.WriteAsync(buffer, 0, count);
+                var count = await request.Body.ReadAsync(buffer, bytesRead, buffer.Length - bytesRead);
+                bytesRead += count;
             }
+
+            await response.Body.WriteAsync(buffer, 0, buffer.Length);
         }
 
         [Fact]
@@ -100,15 +102,13 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
 
         private class RewritingConnectionFilter : IConnectionFilter
         {
-            private static Task _empty = Task.FromResult<object>(null);
-
             private RewritingStream _rewritingStream;
 
             public Task OnConnectionAsync(ConnectionFilterContext context)
             {
                 _rewritingStream = new RewritingStream(context.Connection);
                 context.Connection = _rewritingStream;
-                return _empty;
+                return TaskCache.CompletedTask;
             }
 
             public int BytesRead => _rewritingStream.BytesRead;
@@ -181,6 +181,15 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 return actual;
             }
 
+            public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                var actual = await _innerStream.ReadAsync(buffer, offset, count);
+
+                BytesRead += actual;
+
+                return actual;
+            }
+
             public override long Seek(long offset, SeekOrigin origin)
             {
                 return _innerStream.Seek(offset, origin);
@@ -202,6 +211,19 @@ namespace Microsoft.AspNetCore.Server.KestrelTests
                 }
 
                 _innerStream.Write(buffer, offset, count);
+            }
+
+            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                for (int i = 0; i < buffer.Length; i++)
+                {
+                    if (buffer[i] == '?')
+                    {
+                        buffer[i] = (byte)'!';
+                    }
+                }
+
+                return _innerStream.WriteAsync(buffer, offset, count, cancellationToken);
             }
         }
     }
